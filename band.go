@@ -8,7 +8,7 @@ package band
 import "fmt"
 
 const (
-  FOUND = iota      // found a band of individuals
+  ANNOUNCE = iota   //   key:value, e.g. found a band of individuals
   SPONSOR = iota    // sponsor the membership of an individual in a band
   REJECT = iota     // reject the membership of an individual in a band
   SUPPORT = iota    // support an individual for a role
