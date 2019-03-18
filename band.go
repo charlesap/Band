@@ -45,14 +45,22 @@ type Claim struct {
 
 
 
-func (Band) GetName(debug bool){
- fmt.Println( "GetName")
+func (o Other) Meetup(debug bool){
+  if debug {
+    fmt.Println( "Meeting with",o.Name)
+  }
+}
 
+func (b Band) Name(debug bool){
+  if debug {
+    fmt.Println( "Band name:",b.Name)
+  }
 }
 
 
 func Initialize(debug bool)  {
- fmt.Println( "initializing-internal-store")
- fmt.Println( "ready!")
-
+  if debug{
+    fmt.Println( "initializing-internal-store")
+    fmt.Println( "ready!")
+  }
 }
