@@ -8,7 +8,7 @@ package main
 import "fmt"
 import "flag"
 import "os"
-import "github.com/charlesap/Band"
+import "github.com/charlesap/Inband"
 
 func main(){
   vptr := flag.Bool("version",false, "Print the version of bandit and exit")
@@ -23,7 +23,7 @@ func main(){
     os.Exit(0)
   }
   Setup(*iptr,*optr,*cptr,*eptr,*fptr)
-  band.Initialize(true)
+  inband.Initialize(true)
   Run("input","params","state","output")
 }
 

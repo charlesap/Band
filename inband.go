@@ -3,7 +3,7 @@
 //  copyright 2019 and distributed under the MIT license 
 //  ----------------------------------------------------------------------
 
-package band
+package inband
 
 import "fmt"
 
@@ -51,7 +51,7 @@ func (o Other) Meetup(debug bool){
   }
 }
 
-func (b Band) Name(debug bool){
+func (b Band) GetName(debug bool){
   if debug {
     fmt.Println( "Band name:",b.Name)
   }
