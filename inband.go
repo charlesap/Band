@@ -30,41 +30,40 @@ package inband
 
 import "fmt"
 
-type Shah [16]byte  // In this code if a variable name is two letters, it contains a Shah
+type Shah [16]byte // In this code if a variable name is two letters, it contains a Shah
 
 type Ident struct {
-  Privkey []byte
-  Pubkey []byte
-  Ps Shah
-  Id Shah    // Represents this identity
+	Privkey []byte
+	Pubkey  []byte
+	Ps      Shah
+	Id      Shah // Represents this identity
 }
 
 type CChain struct {
-  Next *CChain
-  This *Claim
+	Next *CChain
+	This *Claim
 }
 
-
 type Stmt struct {
-  Said []byte
-  Sd Shah     // Represents this statement
+	Said []byte
+	Sd   Shah // Represents this statement
 }
 
 type Claim struct {
-  Affirm bool
-  C int        // Increment for superceding claims
-  By Shah
-  Er Shah
-  Ee Shah
-  St Shah
-  Cl Shah      // Represents this claim
+	Affirm bool
+	C      int // Increment for superceding claims
+	By     Shah
+	Er     Shah
+	Ee     Shah
+	St     Shah
+	Cl     Shah // Represents this claim
 }
 
 type ICCC struct {
-  I Ident
-  B CChain
-  R CChain
-  E CChain
+	I Ident
+	B CChain
+	R CChain
+	E CChain
 }
 
 var Me Shah
@@ -76,21 +75,21 @@ var Claims map[Shah]Claim
 
 // DESIGN
 
-// An Id is formed by creating a private/public key pair and taking the shah of a 
-// cert  with the private key. 
+// An Id is formed by creating a private/public key pair and taking the shah of a
+// cert  with the private key.
 
-// If the Id is for a band then it  makes a claim with its Id as the By, Er, and Ee and the name as the St. 
+// If the Id is for a band then it  makes a claim with its Id as the By, Er, and Ee and the name as the St.
 // The band's private key may then be discarded as it should never be used again.
 
 // The private key should be kept for an individual rather than a band. The private key should not be transmitted.
 
-// A claim of association takes the Idshahs of a (claim)By of (claim)Er to (claim)Ee and the Sdshah of a Stmt (St) and 
+// A claim of association takes the Idshahs of a (claim)By of (claim)Er to (claim)Ee and the Sdshah of a Stmt (St) and
 // produces a Seal of the By-pkey-signed Affirm + C + Er + Ee + St.
 
-// A band will have its founders when at least two Ids symmetrically make and exchange membership upvote claims 
+// A band will have its founders when at least two Ids symmetrically make and exchange membership upvote claims
 // of association with each other's Ee the band's Er
 
-// Each individual will also create their own name claim. 
+// Each individual will also create their own name claim.
 
 // an individual may change their name by making a new name claim and downvoting their old one.
 // nicnames are when an individual makes a name claim for someone else.
@@ -105,9 +104,9 @@ var Claims map[Shah]Claim
 
 // An Id may be considered to be a member so long as it has more upvotes than downvotes by other members. This is a circular relation.
 
-// Other relastionships may be described between two individuals. 
+// Other relastionships may be described between two individuals.
 
-// A Moot is when an Ident has a Visit with several other Idents requesting new Claims from them. 
+// A Moot is when an Ident has a Visit with several other Idents requesting new Claims from them.
 
 // Anyone can Moot. Someone who Moots a lot might be made a leader, or might be downvoted out of the band to stop the bother.
 
@@ -115,42 +114,37 @@ var Claims map[Shah]Claim
 
 // a Dog is an automaton with an Id that acts on its view of the consensus of the band.
 
-// An individual identity 
+// An individual identity
 
 // a role is just another name for a person
 // SPONSOR shah + AFFIRM shah Topic name == introduce person as name
 // name can be a utf8 string or a gif or a jpeg or a ring-tone or...
 
-
-func (b Shah) Consider( c Claim){
+func (b Shah) Consider(c Claim) {
 }
 
-
-
-func (b Shah) Moot(debug bool){
-  if debug {
-    i:=All[b]
-    fmt.Println( "Mooting in",i.I.Is())
-  } 
+func (b Shah) Moot(debug bool) {
+	if debug {
+		i := All[b]
+		fmt.Println("Mooting in", i.I.Is())
+	}
 }
 
-
-func (i Ident) Visit(debug bool){
-  if debug {
-    fmt.Println( "Visiting",i.Is())
-  }
+func (i Ident) Visit(debug bool) {
+	if debug {
+		fmt.Println("Visiting", i.Is())
+	}
 }
 
 func (i Ident) Is() string {
-  //return string(Stmts[i.St].Said)
-  return "somebody"
+	//return string(Stmts[i.St].Said)
+	return "somebody"
 }
 
-
-func Initialize(debug bool)  {
-  if debug{
-    fmt.Println( "initializing-internal-store")
-    fmt.Println( Me, Bands, All, Stmts, Claims )
-    fmt.Println( "ready!")
-  }
+func Initialize(debug bool) {
+	if debug {
+		fmt.Println("initializing-internal-store")
+		fmt.Println(Me, Bands, All, Stmts, Claims)
+		fmt.Println("ready!")
+	}
 }
