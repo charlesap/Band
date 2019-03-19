@@ -40,7 +40,7 @@ type Ident struct {
 }
 
 type CChain struct {
-  Next *Shch
+  Next *CChain
   This *Claim
 }
 
@@ -60,13 +60,21 @@ type Claim struct {
   Cl Shah      // Represents this claim
 }
 
+type ICCC struct {
+  I Ident
+  B CChain
+  R CChain
+  E CChain
+}
+
 var Me Shah
 var Bands []Shah
-var All map[Shah] {Ident,CChain,CChain,CChain} // individual/band, By chain, Er chain, Ee chain for this Id
-var Topics map[Shah] CChain
-var Stmts map[Shah] Stmt
-var Claims map[Shah] Claim
+var All map[Shah]ICCC // individual/band, By chain, Er chain, Ee chain for this Id
+var Topics map[Shah]CChain
+var Stmts map[Shah]Stmt
+var Claims map[Shah]Claim
 
+// DESIGN
 
 // An Id is formed by creating a private/public key pair and taking the shah of a 
 // cert  with the private key. 
@@ -122,7 +130,7 @@ func (b Shah) Consider( c Claim){
 func (b Shah) Moot(debug bool){
   if debug {
     i:=All[b]
-    fmt.Println( "Mooting in",i.Is())
+    fmt.Println( "Mooting in",i.I.Is())
   } 
 }
 
@@ -134,7 +142,8 @@ func (i Ident) Visit(debug bool){
 }
 
 func (i Ident) Is() string {
-  return string(Stmts[i.St].Said)
+  //return string(Stmts[i.St].Said)
+  return "somebody"
 }
 
 
