@@ -1,6 +1,6 @@
 //  ----------------------------------------------------------------------
 //  band implementation and framework for stateless distributed group identity
-//  automating the tribe vs. automating the state
+//  for automating the tribe (vs. automating the state)
 //
 //  MIT License
 //
@@ -86,7 +86,7 @@ var Claims map[Shah]Claim
 // A claim of association takes the Idshahs of a (claim)By of (claim)Er to (claim)Ee and the Sdshah of a Stmt (St) and
 // produces a Seal of the By-pkey-signed Affirm + C + Er + Ee + St.
 
-// A band will have its founders when at least two Ids symmetrically make and exchange membership upvote claims
+// A band will have its founders when at least two Ids symmetrically make and exchange 'in' upvote claims
 // of association with each other's Ee the band's Er
 
 // Each individual will also create their own name claim.
@@ -99,7 +99,7 @@ var Claims map[Shah]Claim
 
 // Global history is not maintained but an individual may keep and share a 'diary' of personal history
 
-// A 'membership upvote' is the Stmt.Said "MEMBER" and Affirm is 'true'. 'membership downvote' is the same but where 'affirm' is false.
+// A 'in upvote' is the Stmt.Said "IN" and Affirm is 'true'. 'in downvote' is the same but where 'affirm' is false.
 // A claim with the same By, Er, Ee, and St but a higher-numbered C supplants earlier claims with teh same By, Er, Ee, and St.
 
 // An Id may be considered to be a member so long as it has more upvotes than downvotes by other members. This is a circular relation.
@@ -119,6 +119,14 @@ var Claims map[Shah]Claim
 // a role is just another name for a person
 // SPONSOR shah + AFFIRM shah Topic name == introduce person as name
 // name can be a utf8 string or a gif or a jpeg or a ring-tone or...
+
+
+// some CLAIMs: (format: Id(claimant) affirm Id(individual) Shah(stmt) Id(individual|band)|Shah(stmt)
+// IN:        claimaint says individual 'IN' band
+// SPEAKER:   claimaint says individual 'SPEAKER' for band
+// MY:        claimaint says claimant 'MY' 'FRIEND'|'PARTNER'|'MENTOR'
+// NAME:      claimaint says claimant 'NAME' '<name>'
+// NICNAME:   claimaint says individual 'NAME' '<name>'
 
 func (b Shah) Consider(c Claim) {
 }
