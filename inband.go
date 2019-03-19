@@ -123,9 +123,11 @@ var Claims map[Shah]Claim
 
 // some CLAIMs: (format: Id(claimant) affirm Id(individual) Shah(stmt) Id(individual|band)|Shah(stmt)
 // IN:        claimaint says individual 'IN' band
-// SPEAKER:   claimaint says individual 'SPEAKER' for band
-// MY:        claimaint says claimant 'MY' 'FRIEND'|'PARTNER'|'MENTOR'
+// <DUTY>:    claimaint says individual 'SPEAKER'|'LEADER'|'SCAPEGOAT'|'WHATEVER' for band
+// MY,<ROLE>: claimaint says individual 'MY' 'FRIEND'|'PARTNER'|'MENTOR'
 // NAME:      claimaint says claimant 'NAME' '<name>'
+// EMAIL:     claimaint says claimant 'EMAIL' '<email address>'
+// IP:        claimaint says claimant 'IP' '<ip address>'
 // NICNAME:   claimaint says individual 'NAME' '<name>'
 
 func (b Shah) Consider(c Claim) {
