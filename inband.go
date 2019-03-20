@@ -201,11 +201,13 @@ func Load(pf, bf, mf string, init, force, debug bool) {
         if _, err := os.Stat(mf); err != nil {
 		if init{
 		}else{
-                        fmt.Println("No memory exists. To begin use -init")
+                        fmt.Println("The memory file does not exist and initialization was not requested.")
+			os.Exit(1)
 		}
 	}else{
 		if init{
-			fmt.Println("A memory already exists. To override use -force")
+			fmt.Println("The memory file already exists and force was not requested.")
+			os.Exit(1)
 		}else{
 		}
 	}
