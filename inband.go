@@ -28,7 +28,23 @@
 
 package inband
 
-import "fmt"
+import (
+	"fmt"
+//	"crypto"
+//	"crypto/rand"
+	"crypto/rsa"
+//	"crypto/sha256"
+	"crypto/x509"
+//	"encoding/base64"
+	"encoding/pem"
+//	"flag"
+//	"github.com/io-core/Attest/s2r"
+	"io/ioutil"
+//	"os"
+//	"path/filepath"
+	"strings"
+//	"time"
+)
 
 type Shah [16]byte // In this code if a variable name is two letters, it contains a Shah
 
@@ -120,11 +136,13 @@ var Claims map[Shah]Claim
 // SPONSOR shah + AFFIRM shah Topic name == introduce person as name
 // name can be a utf8 string or a gif or a jpeg or a ring-tone or...
 
+// When mooted by a mooter regarding a claim, the mootee can affirm true or false or decline to reply.
+// It is expected that if a mootee has affirmed a leader and the leader is a mooter then the mootee should not decline to reply.
 
 // some CLAIMs: (format: Id(claimant) affirm Id(individual) Shah(stmt) Id(individual|band)|Shah(stmt)
 // IN:        claimaint says individual 'IN' band
 // <DUTY>:    claimaint says individual 'SPEAKER'|'LEADER'|'SCAPEGOAT'|'COOK'|'CLERK'|'PROGNOSTICATOR'|'<whatever>' for band
-// <STATUS>:  claimaint says individual 'SAGE'|'ELDER'|'FULL-MEMBER'|'ELECT'|'<something>' in band
+// <STATUS>:  claimaint says individual 'SAGE'|'CONTRIBUTOR'|'JOURNEYMAN'|'BRO/SIS'|'ELDER'|'FULL-MEMBER'|'ELECT'|'COMPETENT'|'DUES-PAID'|'<something>' in band
 // MY,<ROLE>: claimaint says individual 'MY' 'FRIEND'|'PARTNER'|'MENTOR'
 // NAME:      claimaint says claimant 'NAME' '<name>'
 // EMAIL:     claimaint says claimant 'EMAIL' '<email address>'
@@ -157,10 +175,38 @@ func (i Ident) Is() string {
 	return "somebody"
 }
 
-func Initialize(debug bool) {
+func getKeys(pkfn, bkfn string) (*rsa.PrivateKey, string) {
+	pk, _ := ioutil.ReadFile(pkfn)
+	bk, _ := ioutil.ReadFile(bkfn)
+	bks := strings.TrimSpace(string(bk))
+	privPem, _ := pem.Decode(pk)
+	privPemBytes := privPem.Bytes
+	parsedKey, _ := x509.ParsePKCS1PrivateKey(privPemBytes)
+	return parsedKey, bks
+}
+
+func Load(pf, bf, hf string, debug bool) {
 	if debug {
-		fmt.Println("initializing-internal-store")
-		fmt.Println(Me, Bands, All, Stmts, Claims)
-		fmt.Println("ready!")
+		fmt.Println("loading identities and claims")
+		fmt.Println(pf, bf, hf, Me, Bands, All, Stmts, Claims)
+	}
+	_,_=getKeys(pf,bf)
+
+	if debug {
+		fmt.Println("loaded!")
 	}
 }
+
+func Store(pf, bf, hf string, debug bool) {
+        if debug {
+                fmt.Println("storing identities and claims")
+                fmt.Println(pf, bf, hf, Me, Bands, All, Stmts, Claims)
+        }
+    
+
+        if debug {
+                fmt.Println("stored!")
+        }
+}
+
+

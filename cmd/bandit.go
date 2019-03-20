@@ -33,53 +33,26 @@ import "os"
 import "github.com/charlesap/Inband"
 
 func main(){
-  vptr := flag.Bool("version",false, "Print the version of bandit and exit")
-  iptr := flag.String("in","-", "Input File")
-  optr := flag.String("out","-", "Output File")
-  cptr := flag.String("config","", "Config File")
-  eptr := flag.String("encoders","ASE", "Encoders")
-  fptr := flag.String("format","csv", "Format")
+	vPtr := flag.Bool("version",false, "Print the version of bandit and exit")
+        dPtr := flag.Bool("debug",false, "Print debug information while running")
+
+	pkeyPtr := flag.String("p", os.Getenv("HOME")+"/.ssh/id_rsa", "path to rsa private key file")
+	bkeyPtr := flag.String("b", os.Getenv("HOME")+"/.ssh/id_rsa.pub", "path to rsa public key file")
+        bandPtr := flag.String("h", os.Getenv("HOME")+"/.ssh/band_history", "path to band_history file")
   flag.Parse()
-  if *vptr {
+  if *vPtr {
     fmt.Println("bandit version 0.0.1")
     os.Exit(0)
   }
-  Setup(*iptr,*optr,*cptr,*eptr,*fptr)
-  inband.Initialize(true)
-  Run("input","params","state","output")
+  Setup()
+  inband.Load(*pkeyPtr,*bkeyPtr,*bandPtr,*dPtr)
+  Run()
+  inband.Store(*pkeyPtr,*bkeyPtr,*bandPtr,*dPtr)
 }
 
 
-func Setup(i string,o string,c string,e string,f string)  ( string, string, string, string)  {
- var inf string
- var param string
- var state string
- var outf string
- if c != "" {
-    inf,param,state,outf = LoadConfig(c) //    call LoadConfig with c giving inf,param,state,outf
- }else{
-    inf = i
-    param = o
-    state = e
-    outf = f
- }
+func Setup()  {
  fmt.Println( "Setup")
- return  inf,param,state,outf
-
-}
-
-func LoadConfig(c string)  ( string, string, string, string)  {
- var i string
- var o string
- var e string
- var f string
- fmt.Println( "Loadconfig")
- i = "-"
- o = "-"
- e = "-"
- f = "-"
- return  i,o,e,f
-
 }
 
 func Help(debug bool)  {
@@ -87,9 +60,9 @@ func Help(debug bool)  {
 
 }
 
-func Run(inf string,param string,state string,outf string)  {
+func Run()  {
  fmt.Println( "running")
-// MERGE
+
  fmt.Println( "done")
 
 }
