@@ -123,12 +123,18 @@ var Claims map[Shah]Claim
 
 // some CLAIMs: (format: Id(claimant) affirm Id(individual) Shah(stmt) Id(individual|band)|Shah(stmt)
 // IN:        claimaint says individual 'IN' band
-// <DUTY>:    claimaint says individual 'SPEAKER'|'LEADER'|'SCAPEGOAT'|'WHATEVER' for band
+// <DUTY>:    claimaint says individual 'SPEAKER'|'LEADER'|'SCAPEGOAT'|'COOK'|'CLERK'|'PROGNOSTICATOR'|'<whatever>' for band
+// <STATUS>:  claimaint says individual 'SAGE'|'ELDER'|'FULL-MEMBER'|'ELECT'|'<something>' in band
 // MY,<ROLE>: claimaint says individual 'MY' 'FRIEND'|'PARTNER'|'MENTOR'
 // NAME:      claimaint says claimant 'NAME' '<name>'
 // EMAIL:     claimaint says claimant 'EMAIL' '<email address>'
 // IP:        claimaint says claimant 'IP' '<ip address>'
 // NICNAME:   claimaint says individual 'NAME' '<name>'
+
+// convention determines the meaning and usefullness of claims.
+// automation may reify convention.
+// claim evaluation happens locally by individuals or dogs (automated individuals.)
+
 
 func (b Shah) Consider(c Claim) {
 }
