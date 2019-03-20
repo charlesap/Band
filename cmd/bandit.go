@@ -35,6 +35,9 @@ import "github.com/charlesap/Inband"
 func main(){
 	vPtr := flag.Bool("version",false, "Print the version of bandit and exit")
         dPtr := flag.Bool("debug",false, "Print debug information while running")
+        iPtr := flag.Bool("init",false, "Initialize the history")
+        fPtr := flag.Bool("force",false, "Force initialization (re-initialize) the history")
+
 
 	pkeyPtr := flag.String("p", os.Getenv("HOME")+"/.ssh/id_rsa", "path to rsa private key file")
 	bkeyPtr := flag.String("b", os.Getenv("HOME")+"/.ssh/id_rsa.pub", "path to rsa public key file")
@@ -45,7 +48,7 @@ func main(){
     os.Exit(0)
   }
   Setup()
-  inband.Load(*pkeyPtr,*bkeyPtr,*bandPtr,*dPtr)
+  inband.Load(*pkeyPtr,*bkeyPtr,*bandPtr,*iPtr,*fPtr,*dPtr)
   Run()
   inband.Store(*pkeyPtr,*bkeyPtr,*bandPtr,*dPtr)
 }

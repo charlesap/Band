@@ -46,49 +46,6 @@ import (
 //	"time"
 )
 
-type Shah [16]byte // In this code if a variable name is two letters, it contains a Shah
-
-type Ident struct {
-	Privkey []byte
-	Pubkey  []byte
-	Ps      Shah
-	Id      Shah // Represents this identity
-}
-
-type CChain struct {
-	Next *CChain
-	This *Claim
-}
-
-type Stmt struct {
-	Said []byte
-	Sd   Shah // Represents this statement
-}
-
-type Claim struct {
-	Affirm bool
-	C      int // Increment for superceding claims
-	By     Shah
-	Er     Shah
-	Ee     Shah
-	St     Shah
-	Cl     Shah // Represents this claim
-}
-
-type ICCC struct {
-	I Ident
-	B CChain
-	R CChain
-	E CChain
-}
-
-var Me Shah
-var Bands []Shah
-var All map[Shah]ICCC // individual/band, By chain, Er chain, Ee chain for this Id
-var Topics map[Shah]CChain
-var Stmts map[Shah]Stmt
-var Claims map[Shah]Claim
-
 // DESIGN
 
 // An Id is formed by creating a private/public key pair and taking the shah of a
@@ -154,6 +111,55 @@ var Claims map[Shah]Claim
 // claim evaluation happens locally by individuals or dogs (automated individuals.)
 
 
+
+
+
+type Shah [16]byte // In this code if a variable name is two letters, it contains a Shah
+
+type Ident struct {
+	Privkey []byte
+	Pubkey  []byte
+	Ps      Shah
+	Id      Shah // Represents this identity
+}
+
+type CChain struct {
+	Next *CChain
+	This *Claim
+}
+
+type Stmt struct {
+	Said []byte
+	Sd   Shah // Represents this statement
+}
+
+type Claim struct {
+	Affirm bool
+	C      int // Increment for superceding claims
+	By     Shah
+	Er     Shah
+	Ee     Shah
+	St     Shah
+	Cl     Shah // Represents this claim
+}
+
+type ICCC struct {
+	I Ident
+	B CChain
+	R CChain
+	E CChain
+}
+
+var Me Shah
+var Bands []Shah
+var All map[Shah]ICCC = make(map[Shah]ICCC)  // individual/band, By chain, Er chain, Ee chain for this Id
+var Topics map[Shah]CChain = make(map[Shah]CChain)
+var Stmts map[Shah]Stmt = make(map[Shah]Stmt)
+var Claims map[Shah]Claim = make(map[Shah]Claim)
+
+
+
+
 func (b Shah) Consider(c Claim) {
 }
 
@@ -185,12 +191,14 @@ func getKeys(pkfn, bkfn string) (*rsa.PrivateKey, string) {
 	return parsedKey, bks
 }
 
-func Load(pf, bf, hf string, debug bool) {
+func Load(pf, bf, hf string, initialize, force, debug bool) {
 	if debug {
-		fmt.Println("loading identities and claims")
+		fmt.Println("loading keys identities and claims...")
 		fmt.Println(pf, bf, hf, Me, Bands, All, Stmts, Claims)
 	}
 	_,_=getKeys(pf,bf)
+
+	
 
 	if debug {
 		fmt.Println("loaded!")
@@ -199,8 +207,8 @@ func Load(pf, bf, hf string, debug bool) {
 
 func Store(pf, bf, hf string, debug bool) {
         if debug {
-                fmt.Println("storing identities and claims")
-                fmt.Println(pf, bf, hf, Me, Bands, All, Stmts, Claims)
+                fmt.Println("storing identities and claims...")
+                
         }
     
 
