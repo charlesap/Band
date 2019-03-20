@@ -30,16 +30,21 @@ package inband
 import "testing"
 
 func TestLoad(t *testing.T) {
-    pkey:="/filename"; pkeyPtr:=&pkey
-    bkey:="/filename"; bkeyPtr:=&bkey
-    band:="/filename"; bandPtr:=&band
-    i:=true; iPtr:=&i
-    f:=false; fPtr:=&f
-    d:=false; dPtr:=&d
-    want := error(nil)
-    if got := Load(*pkeyPtr,*bkeyPtr,*bandPtr,*iPtr,*fPtr,*dPtr); got != want {
-        t.Errorf("Load() = %q, want %q", got, want)
-    }
+	pkey := "/filename"
+	pkeyPtr := &pkey
+	bkey := "/filename"
+	bkeyPtr := &bkey
+	band := "/filename"
+	bandPtr := &band
+	i := true
+	iPtr := &i
+	f := false
+	fPtr := &f
+	d := false
+	dPtr := &d
+	want := error(nil)
+	if got := Load(*pkeyPtr, *bkeyPtr, *bandPtr, *iPtr, *fPtr, *dPtr); got != want {
+		t.Errorf("Load() = %q, want %q", got, want)
+	}
 
 }
-

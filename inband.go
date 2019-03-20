@@ -30,20 +30,20 @@ package inband
 
 import (
 	"fmt"
-//	"crypto"
-//	"crypto/rand"
+	//	"crypto"
+	//	"crypto/rand"
 	"crypto/rsa"
-//	"crypto/sha256"
+	//	"crypto/sha256"
 	"crypto/x509"
-//	"encoding/base64"
+	//	"encoding/base64"
 	"encoding/pem"
-//	"flag"
-//	"github.com/io-core/Attest/s2r"
+	//	"flag"
+	//	"github.com/io-core/Attest/s2r"
 	"io/ioutil"
 	"os"
-//	"path/filepath"
+	//	"path/filepath"
 	"strings"
-//	"time"
+	//	"time"
 )
 
 // DESIGN
@@ -110,10 +110,6 @@ import (
 // automation may reify convention.
 // claim evaluation happens locally by individuals or dogs (automated individuals.)
 
-
-
-
-
 type Shah [16]byte // In this code if a variable name is two letters, it contains a Shah
 
 type Ident struct {
@@ -152,13 +148,10 @@ type ICCC struct {
 
 var Me Shah
 var Bands []Shah
-var All map[Shah]ICCC = make(map[Shah]ICCC)  // individual/band, By chain, Er chain, Ee chain for this Id
+var All map[Shah]ICCC = make(map[Shah]ICCC) // individual/band, By chain, Er chain, Ee chain for this Id
 var Topics map[Shah]CChain = make(map[Shah]CChain)
 var Stmts map[Shah]Stmt = make(map[Shah]Stmt)
 var Claims map[Shah]Claim = make(map[Shah]Claim)
-
-
-
 
 func (b Shah) Consider(c Claim) {
 }
@@ -185,14 +178,14 @@ func getKeys(pkfn, bkfn string) (*rsa.PrivateKey, string, error) {
 	err := error(nil)
 	bks := ""
 	var parsedKey *rsa.PrivateKey
-        if _, err1 := os.Stat(pkfn); err1 != nil {
+	if _, err1 := os.Stat(pkfn); err1 != nil {
 		err = err1
-        }else{
+	} else {
 		if _, err2 := os.Stat(bkfn); err2 != nil {
-                	err = err2
-		}else{
-	        	pk, _ := ioutil.ReadFile(pkfn)
-	        	bk, _ := ioutil.ReadFile(bkfn)
+			err = err2
+		} else {
+			pk, _ := ioutil.ReadFile(pkfn)
+			bk, _ := ioutil.ReadFile(bkfn)
 			bks = strings.TrimSpace(string(bk))
 			privPem, _ := pem.Decode(pk)
 			privPemBytes := privPem.Bytes
@@ -207,19 +200,19 @@ func Load(pf, bf, mf string, init, force, debug bool) error {
 		fmt.Println("loading keys identities and claims...")
 		fmt.Println(pf, bf, mf, Me, Bands, All, Stmts, Claims)
 	}
-	_,_,_=getKeys(pf,bf)
+	_, _, _ = getKeys(pf, bf)
 
-        if _, err := os.Stat(mf); err != nil {
-		if init{
-		}else{
-                        fmt.Println("The memory file does not exist and initialization was not requested.")
+	if _, err := os.Stat(mf); err != nil {
+		if init {
+		} else {
+			fmt.Println("The memory file does not exist and initialization was not requested.")
 			os.Exit(1)
 		}
-	}else{
-		if init{
+	} else {
+		if init {
 			fmt.Println("The memory file already exists and force was not requested.")
 			os.Exit(1)
-		}else{
+		} else {
 		}
 	}
 
@@ -230,15 +223,12 @@ func Load(pf, bf, mf string, init, force, debug bool) error {
 }
 
 func Store(pf, bf, hf string, debug bool) {
-        if debug {
-                fmt.Println("storing identities and claims...")
-                
-        }
-    
+	if debug {
+		fmt.Println("storing identities and claims...")
 
-        if debug {
-                fmt.Println("stored!")
-        }
+	}
+
+	if debug {
+		fmt.Println("stored!")
+	}
 }
-
-
