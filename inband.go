@@ -40,7 +40,7 @@ import (
 //	"flag"
 //	"github.com/io-core/Attest/s2r"
 	"io/ioutil"
-//	"os"
+	"os"
 //	"path/filepath"
 	"strings"
 //	"time"
@@ -191,14 +191,24 @@ func getKeys(pkfn, bkfn string) (*rsa.PrivateKey, string) {
 	return parsedKey, bks
 }
 
-func Load(pf, bf, hf string, initialize, force, debug bool) {
+func Load(pf, bf, mf string, init, force, debug bool) {
 	if debug {
 		fmt.Println("loading keys identities and claims...")
-		fmt.Println(pf, bf, hf, Me, Bands, All, Stmts, Claims)
+		fmt.Println(pf, bf, mf, Me, Bands, All, Stmts, Claims)
 	}
 	_,_=getKeys(pf,bf)
 
-	
+        if _, err := os.Stat(mf); err != nil {
+		if init{
+		}else{
+                        fmt.Println("No memory exists. To begin use -init")
+		}
+	}else{
+		if init{
+			fmt.Println("A memory already exists. To override use -force")
+		}else{
+		}
+	}
 
 	if debug {
 		fmt.Println("loaded!")
