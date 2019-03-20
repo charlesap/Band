@@ -49,7 +49,7 @@ func main() {
 	Setup()
 	_ = inband.Load(*pkeyPtr, *bkeyPtr, *bandPtr, *iPtr, *fPtr, *dPtr)
 	Run()
-	inband.Store(*pkeyPtr, *bkeyPtr, *bandPtr, *dPtr)
+	_ = inband.Store(*pkeyPtr, *bkeyPtr, *bandPtr, *dPtr)
 }
 
 func Setup() {

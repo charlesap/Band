@@ -30,6 +30,7 @@ package inband
 
 import (
 	"fmt"
+	"errors"
 	//	"crypto"
 	//	"crypto/rand"
 	"crypto/rsa"
@@ -187,40 +188,58 @@ func getKeys(pkfn, bkfn string) (key *rsa.PrivateKey, bks string, err error) {
 	return key, bks, err
 }
 
-func Load(pf, bf, mf string, init, force, debug bool) error {
+func getMemory( mfn string, init, force bool) (err error) {
+        if _, mferr := os.Stat(mfn); mferr != nil {
+                if ! init { 
+                        err = errors.New("The memory file does not exist and initialization was not requested.")
+                } else {
+                        // initializing memory
+                }
+        } else {
+                if init {
+                        err = errors.New("The memory file already exists and force was not requested.")
+                } else {
+                        // loading memory
+                }
+        }
+
+	return err
+}
+
+func putMemory( mfn string ) (err error) {
+
+	return err
+}
+
+func Load(pf, bf, mf string, init, force, debug bool) (err error) {
 	if debug {
 		fmt.Println("loading keys identities and claims...")
 		fmt.Println(pf, bf, mf, Me, Bands, All, Stmts, Claims)
 	}
-	_, _, _ = getKeys(pf, bf)
-
-	if _, err := os.Stat(mf); err != nil {
-		if init {
-		} else {
-			fmt.Println("The memory file does not exist and initialization was not requested.")
-			os.Exit(1)
-		}
-	} else {
-		if init {
-			fmt.Println("The memory file already exists and force was not requested.")
-			os.Exit(1)
-		} else {
+	if _, _, err = getKeys(pf, bf); err == nil {
+		if err = getMemory(mf,init,force); err != nil {
+			
+		
+	
+			if debug {
+				fmt.Println("loaded!")
+			}
 		}
 	}
-
-	if debug {
-		fmt.Println("loaded!")
-	}
-	return error(nil)
+	return err
 }
 
-func Store(pf, bf, hf string, debug bool) {
+func Store(pf, bf, mf string, debug bool) (err error) {
 	if debug {
 		fmt.Println("storing identities and claims...")
 
 	}
+	
+	if err = putMemory(mf); err != nil {
 
-	if debug {
-		fmt.Println("stored!")
+		if debug {
+			fmt.Println("stored!")
+		}
 	}
+	return err
 }

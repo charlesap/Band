@@ -27,24 +27,37 @@
 
 package inband
 
-import "testing"
-
-func TestLoad(t *testing.T) {
-	pkey := "/filename"
-	pkeyPtr := &pkey
-	bkey := "/filename"
-	bkeyPtr := &bkey
-	band := "/filename"
-	bandPtr := &band
+import (
+	"testing"
+	"os"
+	//"fmt"
+)
+func Test_reporting_nonexistant_keys_and_bandmemory(t *testing.T) {
+	pkey := "/badpublickeyfilename"
+	bkey := "/badprivatekeyfilename"
+	band := "/badbandmemoryfilename"
 	i := true
-	iPtr := &i
 	f := false
-	fPtr := &f
 	d := false
-	dPtr := &d
-	want := error(nil)
-	if got := Load(*pkeyPtr, *bkeyPtr, *bandPtr, *iPtr, *fPtr, *dPtr); got != want {
-		t.Errorf("Load() = %q, want %q", got, want)
+	want := "open /badpublickeyfilename: no such file or directory"
+	if got := Load(pkey, bkey, band, i, f, d); got != nil && got.Error() != want {
+		t.Errorf("Load() = %q, want %q", got.Error(), want)
+	}else if got == nil{
+                t.Errorf("Load() = %q, want %q", error(nil), want)
 	}
-
 }
+
+func Test_Loading_ssh_keys(t *testing.T) {
+	pkey := os.Getenv("HOME")+"/.ssh/id_rsa"
+	bkey := os.Getenv("HOME")+"/.ssh/id_rsa.pub"
+	band := os.Getenv("HOME")+"/.ssh/band_memory"
+        i := true
+        f := false
+        d := false
+        if got := Load(pkey, bkey, band, i, f, d); got != nil {
+                t.Errorf("Load() = %q, expected error(nil)", got.Error())
+        }
+		
+	
+}
+
