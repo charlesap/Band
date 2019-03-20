@@ -181,22 +181,33 @@ func (i Ident) Is() string {
 	return "somebody"
 }
 
-func getKeys(pkfn, bkfn string) (*rsa.PrivateKey, string) {
-	pk, _ := ioutil.ReadFile(pkfn)
-	bk, _ := ioutil.ReadFile(bkfn)
-	bks := strings.TrimSpace(string(bk))
-	privPem, _ := pem.Decode(pk)
-	privPemBytes := privPem.Bytes
-	parsedKey, _ := x509.ParsePKCS1PrivateKey(privPemBytes)
-	return parsedKey, bks
+func getKeys(pkfn, bkfn string) (*rsa.PrivateKey, string, error) {
+	err := error(nil)
+	bks := ""
+	var parsedKey *rsa.PrivateKey
+        if _, err1 := os.Stat(pkfn); err1 != nil {
+		err = err1
+        }else{
+		if _, err2 := os.Stat(bkfn); err2 != nil {
+                	err = err2
+		}else{
+	        	pk, _ := ioutil.ReadFile(pkfn)
+	        	bk, _ := ioutil.ReadFile(bkfn)
+			bks = strings.TrimSpace(string(bk))
+			privPem, _ := pem.Decode(pk)
+			privPemBytes := privPem.Bytes
+			parsedKey, _ = x509.ParsePKCS1PrivateKey(privPemBytes)
+		}
+	}
+	return parsedKey, bks, err
 }
 
-func Load(pf, bf, mf string, init, force, debug bool) {
+func Load(pf, bf, mf string, init, force, debug bool) error {
 	if debug {
 		fmt.Println("loading keys identities and claims...")
 		fmt.Println(pf, bf, mf, Me, Bands, All, Stmts, Claims)
 	}
-	_,_=getKeys(pf,bf)
+	_,_,_=getKeys(pf,bf)
 
         if _, err := os.Stat(mf); err != nil {
 		if init{
@@ -215,6 +226,7 @@ func Load(pf, bf, mf string, init, force, debug bool) {
 	if debug {
 		fmt.Println("loaded!")
 	}
+	return error(nil)
 }
 
 func Store(pf, bf, hf string, debug bool) {

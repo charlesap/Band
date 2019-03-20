@@ -25,20 +25,21 @@
 //
 //  ----------------------------------------------------------------------
 
-package test
+package inband
 
-import "fmt"
-import "flag"
-import "os"
-import "github.com/charlesap/Inband"
+import "testing"
 
-func main(){
-  wut.Initialize(true)
-  fmt.Println("testing bandit version 0.0.1")
+func TestLoad(t *testing.T) {
+    pkey:="/filename"; pkeyPtr:=&pkey
+    bkey:="/filename"; bkeyPtr:=&bkey
+    band:="/filename"; bandPtr:=&band
+    i:=true; iPtr:=&i
+    f:=false; fPtr:=&f
+    d:=false; dPtr:=&d
+    want := error(nil)
+    if got := Load(*pkeyPtr,*bkeyPtr,*bandPtr,*iPtr,*fPtr,*dPtr); got != want {
+        t.Errorf("Load() = %q, want %q", got, want)
+    }
+
 }
 
-
-func Test(debug bool)  {
- fmt.Println( "Test")
-
-}
