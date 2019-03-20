@@ -174,25 +174,17 @@ func (i Ident) Is() string {
 	return "somebody"
 }
 
-func getKeys(pkfn, bkfn string) (*rsa.PrivateKey, string, error) {
-	err := error(nil)
-	bks := ""
-	var parsedKey *rsa.PrivateKey
-	if _, err1 := os.Stat(pkfn); err1 != nil {
-		err = err1
-	} else {
-		if _, err2 := os.Stat(bkfn); err2 != nil {
-			err = err2
-		} else {
-			pk, _ := ioutil.ReadFile(pkfn)
-			bk, _ := ioutil.ReadFile(bkfn)
+func getKeys(pkfn, bkfn string) (key *rsa.PrivateKey, bks string, err error) {	
+	var pk,bk []byte
+	if pk, err = ioutil.ReadFile(pkfn); err == nil { 
+		if bk, err = ioutil.ReadFile(bkfn); err == nil {
 			bks = strings.TrimSpace(string(bk))
 			privPem, _ := pem.Decode(pk)
 			privPemBytes := privPem.Bytes
-			parsedKey, _ = x509.ParsePKCS1PrivateKey(privPemBytes)
+			key, err = x509.ParsePKCS1PrivateKey(privPemBytes)
 		}
 	}
-	return parsedKey, bks, err
+	return key, bks, err
 }
 
 func Load(pf, bf, mf string, init, force, debug bool) error {
