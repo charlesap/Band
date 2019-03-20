@@ -40,7 +40,7 @@ func Test_reporting_nonexistant_keys_and_bandmemory(t *testing.T) {
 	f := false
 	d := false
 	want := "open /badpublickeyfilename: no such file or directory"
-	if got := Load(pkey, bkey, band, i, f, d); got != nil && got.Error() != want {
+	if got := Startup(pkey, bkey, band, i, f, d); got != nil && got.Error() != want {
 		t.Errorf("Load() = %q, want %q", got.Error(), want)
 	}else if got == nil{
                 t.Errorf("Load() = %q, want %q", error(nil), want)
@@ -54,7 +54,7 @@ func Test_Loading_ssh_keys(t *testing.T) {
         i := true
         f := false
         d := false
-        if got := Load(pkey, bkey, band, i, f, d); got != nil {
+        if got := Startup(pkey, bkey, band, i, f, d); got != nil {
                 t.Errorf("Load() = %q, expected error(nil)", got.Error())
         }
 		

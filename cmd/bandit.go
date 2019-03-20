@@ -47,9 +47,9 @@ func main() {
 		os.Exit(0)
 	}
 	Setup()
-	_ = inband.Load(*pkeyPtr, *bkeyPtr, *bandPtr, *iPtr, *fPtr, *dPtr)
+	_ = inband.Startup(*pkeyPtr, *bkeyPtr, *bandPtr, *iPtr, *fPtr, *dPtr)
 	Run()
-	_ = inband.Store(*pkeyPtr, *bkeyPtr, *bandPtr, *dPtr)
+	_ = inband.Shutdown(*pkeyPtr, *bkeyPtr, *bandPtr, *dPtr)
 }
 
 func Setup() {

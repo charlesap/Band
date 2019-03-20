@@ -188,7 +188,7 @@ func getKeys(pkfn, bkfn string) (key *rsa.PrivateKey, bks string, err error) {
 	return key, bks, err
 }
 
-func getMemory( mfn string, init, force bool) (err error) {
+func recall( mfn string, init, force bool) (err error) {
         if _, mferr := os.Stat(mfn); mferr != nil {
                 if ! init { 
                         err = errors.New("The memory file does not exist and initialization was not requested.")
@@ -206,18 +206,18 @@ func getMemory( mfn string, init, force bool) (err error) {
 	return err
 }
 
-func putMemory( mfn string ) (err error) {
+func persist( mfn string ) (err error) {
 
 	return err
 }
 
-func Load(pf, bf, mf string, init, force, debug bool) (err error) {
+func Startup(pf, bf, mf string, init, force, debug bool) (err error) {
 	if debug {
 		fmt.Println("loading keys identities and claims...")
 		fmt.Println(pf, bf, mf, Me, Bands, All, Stmts, Claims)
 	}
 	if _, _, err = getKeys(pf, bf); err == nil {
-		if err = getMemory(mf,init,force); err != nil {
+		if err = recall(mf,init,force); err != nil {
 			
 		
 	
@@ -229,13 +229,13 @@ func Load(pf, bf, mf string, init, force, debug bool) (err error) {
 	return err
 }
 
-func Store(pf, bf, mf string, debug bool) (err error) {
+func Shutdown(pf, bf, mf string, debug bool) (err error) {
 	if debug {
 		fmt.Println("storing identities and claims...")
 
 	}
 	
-	if err = putMemory(mf); err != nil {
+	if err = persist(mf); err != nil {
 
 		if debug {
 			fmt.Println("stored!")
