@@ -9,5 +9,4 @@ An information system that grants the band of freely cooperating individuals the
 
 The Inband software with the 'band' protocol is an attempt to provide a framework for such an information system.
 
-[1] Wherein power is alienated from or accrued to the individual via structural relationship to the group as opposed to direct individual delegation.
-
+[1] Wherein power is alienated from or accrued to the individual via structural relationship to the group as opposed to revokable delegation.
