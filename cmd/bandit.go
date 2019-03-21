@@ -41,13 +41,14 @@ func main() {
 	pkeyPtr := flag.String("p", os.Getenv("HOME")+"/.ssh/id_rsa", "path to rsa private key file")
 	bkeyPtr := flag.String("b", os.Getenv("HOME")+"/.ssh/id_rsa.pub", "path to rsa public key file")
 	bandPtr := flag.String("h", os.Getenv("HOME")+"/.ssh/band_memory", "path to band_memory file")
+        namePtr := flag.String("n", "Anonymous", "name for a new identity when initializing the history")
 	flag.Parse()
 	if *vPtr {
 		fmt.Println("bandit version 0.0.1")
 		os.Exit(0)
 	}
 	Setup()
-	_ = inband.Startup(*pkeyPtr, *bkeyPtr, *bandPtr, *iPtr, *fPtr, *dPtr)
+	_ = inband.Startup(*pkeyPtr, *bkeyPtr, *bandPtr, *namePtr, *iPtr, *fPtr, *dPtr)
 	Run()
 	_ = inband.Shutdown(*pkeyPtr, *bkeyPtr, *bandPtr, *dPtr)
 }

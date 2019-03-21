@@ -31,26 +31,26 @@ package inband
 import (
 	"fmt"
 	"errors"
-	//	"crypto"
-	//	"crypto/rand"
+	"crypto"
+	"crypto/rand"
 	"crypto/rsa"
-	//	"crypto/sha256"
+	"crypto/sha256"
 	"crypto/x509"
-	//	"encoding/base64"
+	"encoding/base64"
 	"encoding/pem"
+	"encoding/binary"
 	//	"flag"
 	//	"github.com/io-core/Attest/s2r"
 	"io/ioutil"
 	"os"
 	//	"path/filepath"
 	"strings"
-	//	"time"
+	//"time"
 )
 
 // DESIGN
 
-// An Id is formed by creating a private/public key pair and taking the shah of a
-// cert  with the private key.
+// An Id is formed by creating a private/public key pair and taking the shah of the signed nonce-and-public-key.
 
 // If the Id is for a band then it  makes a claim with its Id as the By, Er, and Ee and the name as the St.
 // The band's private key may then be discarded as it should never be used again.
@@ -111,13 +111,11 @@ import (
 // automation may reify convention.
 // claim evaluation happens locally by individuals or dogs (automated individuals.)
 
-type Shah [16]byte // In this code if a variable name is two letters, it contains a Shah
+type Shah [32]byte // In this code if a variable name is two letters, it contains a Shah
 
 type Ident struct {
-	Privkey []byte
 	Pubkey  []byte
-	Ps      Shah
-	Id      Shah // Represents this identity
+	Id      Shah // Sha256(Pubkey in "<keytype> <base64-encoded-key> Id" form) represents this identity
 }
 
 type CChain struct {
@@ -132,11 +130,12 @@ type Stmt struct {
 
 type Claim struct {
 	Affirm bool
-	C      int // Increment for superceding claims
+	C      uint64 // Increment for superceding claims
 	By     Shah
 	Er     Shah
 	Ee     Shah
 	St     Shah
+	Sig    []byte
 	Cl     Shah // Represents this claim
 }
 
@@ -148,6 +147,10 @@ type ICCC struct {
 }
 
 var Me Shah
+var Self Ident
+var MyNameStmt Stmt
+var MyNameClaim Claim
+var MyPrivateKey *rsa.PrivateKey
 var Bands []Shah
 var All map[Shah]ICCC = make(map[Shah]ICCC) // individual/band, By chain, Er chain, Ee chain for this Id
 var Topics map[Shah]CChain = make(map[Shah]CChain)
@@ -175,31 +178,118 @@ func (i Ident) Is() string {
 	return "somebody"
 }
 
-func getKeys(pkfn, bkfn string) (key *rsa.PrivateKey, bks string, err error) {	
-	var pk,bk []byte
+func getKeys(pkfn, bkfn string) (key *rsa.PrivateKey, pk, bk []byte, err error) {	
+	var bkt []byte
 	if pk, err = ioutil.ReadFile(pkfn); err == nil { 
-		if bk, err = ioutil.ReadFile(bkfn); err == nil {
-			bks = strings.TrimSpace(string(bk))
+		if bkt, err = ioutil.ReadFile(bkfn); err == nil {
+			
+			bka:= strings.Split(string(bkt)," ")
+			l:=len(bka)
+			if l<3 {
+				err = errors.New("too few fields in public key file")
+			}else{
+				if l>3{  // count from end because options may contain quoted spaces
+					bk=[]byte(bka[l-2]+" "+bka[l-3]+" Id")
+				}else{
+					bk=[]byte(bka[0]+" "+bka[1]+" Id")
+				}
+			}
 			privPem, _ := pem.Decode(pk)
 			privPemBytes := privPem.Bytes
 			key, err = x509.ParsePKCS1PrivateKey(privPemBytes)
 		}
 	}
-	return key, bks, err
+	return key, pk, bk, err
 }
 
-func recall( mfn string, init, force bool) (err error) {
+func MakeClaim( affirm bool, count uint64, by, er, ee, st Shah) (c Claim, err error){
+	
+        var sig []byte
+
+        c.Affirm = affirm
+        c.C = count
+        c.By = by
+        c.Er = er
+        c.Ee = ee
+        c.St = st
+
+
+	abuf := make([]byte, 8)
+	abuf[0]=1  //version 1 of the claim packing format for signatures... bytes 1-6 are undefined
+	if affirm {
+		abuf[7]=0
+	}else{
+		abuf[7]=255
+	}
+
+	cbuf := make([]byte, 8)
+	binary.LittleEndian.PutUint64(cbuf, c.C)
+	
+
+	if sig, err = Sign( append(abuf, 
+                              append(cbuf, 
+                              append(c.By[:], 
+                              append(c.Er[:], 
+                              append(c.Ee[:],
+				     c.St[:]...)...)...)...)...)); err == nil {
+        	c.Sig = sig                
+        	c.Cl = sha256.Sum256(c.Sig) 
+	}
+	return c, err
+}
+
+func WellFormedClaim( c Claim) bool {
+
+	return true
+}
+
+func recall( pfn, bfn, mfn, n string, init, force bool) (err error) {
+	//var self Ident
+
         if _, mferr := os.Stat(mfn); mferr != nil {
                 if ! init { 
                         err = errors.New("The memory file does not exist and initialization was not requested.")
                 } else {
-                        // initializing memory
+                        // initializing persistent store
+			
+			var pk, bk []byte
+			if MyPrivateKey, pk, bk, err = getKeys(pfn, bfn); err == nil {	
+				fmt.Println(":MYPRIVATE:")
+				fmt.Println(string(pk))
+                                fmt.Println(":MYPUBLIC:")
+                                fmt.Println(string(bk))
+				Self.Pubkey = bk
+                                fmt.Println(":MYID:")				
+                                Me = sha256.Sum256(Self.Pubkey)
+				Self.Id = Me
+                                fmt.Println(base64.StdEncoding.EncodeToString(Me[:]))
+				MyNameStmt.Said = []byte(n)
+				MyNameStmt.Sd = sha256.Sum256(MyNameStmt.Said)
+				if MyNameClaim, err = MakeClaim( true, 0, Me, Me, Me, MyNameStmt.Sd ); err == nil {
+					fmt.Println(":MYNAMECLAIM:")
+					fmt.Println(MyNameClaim.Affirm)
+					fmt.Println(MyNameClaim.C)
+					fmt.Println(base64.StdEncoding.EncodeToString(MyNameClaim.By[:]))
+					fmt.Println(base64.StdEncoding.EncodeToString(MyNameClaim.Er[:]))
+                                        fmt.Println(base64.StdEncoding.EncodeToString(MyNameClaim.Ee[:]))
+                                        fmt.Println(base64.StdEncoding.EncodeToString(MyNameClaim.St[:]))
+                                        fmt.Println(base64.StdEncoding.EncodeToString(MyNameClaim.Sig))
+                                        fmt.Println(base64.StdEncoding.EncodeToString(MyNameClaim.Cl[:]))
+				}
+			}
                 }
         } else {
                 if init {
-                        err = errors.New("The memory file already exists and force was not requested.")
+			if force {
+				// re-initializing persistent store
+                        	if MyPrivateKey, _, _, err = getKeys(pfn, bfn); err == nil {
+                        	}
+
+			}else{
+                        	err = errors.New("The memory file already exists and force was not requested.")
+			}
                 } else {
-                        // loading memory
+                        // loading from persistent store
                 }
         }
 
@@ -211,31 +301,31 @@ func persist( mfn string ) (err error) {
 	return err
 }
 
-func Startup(pf, bf, mf string, init, force, debug bool) (err error) {
+func Startup(pfn, bfn, mfn, n string, init, force, debug bool) (err error) {
 	if debug {
 		fmt.Println("loading keys identities and claims...")
-		fmt.Println(pf, bf, mf, Me, Bands, All, Stmts, Claims)
+		fmt.Println(pfn, bfn, mfn, n, Me, Bands, All, Stmts, Claims)
 	}
-	if _, _, err = getKeys(pf, bf); err == nil {
-		if err = recall(mf,init,force); err != nil {
+	
+	if err = recall(pfn, bfn, mfn, n, init, force); err != nil {
 			
 		
 	
-			if debug {
-				fmt.Println("loaded!")
-			}
+		if debug {
+			fmt.Println("loaded!")
 		}
 	}
+	
 	return err
 }
 
-func Shutdown(pf, bf, mf string, debug bool) (err error) {
+func Shutdown(pfn, bfn, mfn string, debug bool) (err error) {
 	if debug {
 		fmt.Println("storing identities and claims...")
 
 	}
 	
-	if err = persist(mf); err != nil {
+	if err = persist(mfn); err != nil {
 
 		if debug {
 			fmt.Println("stored!")
@@ -243,3 +333,17 @@ func Shutdown(pf, bf, mf string, debug bool) (err error) {
 	}
 	return err
 }
+
+func Sign(contents []byte) (encoded []byte, err error) {
+	hashed := sha256.Sum256(contents)
+
+	signature := []byte{}
+	if signature, err = rsa.SignPKCS1v15(rand.Reader, MyPrivateKey, crypto.SHA256, hashed[:]); err == nil {
+
+		encoded = signature //base64.StdEncoding.EncodeToString(signature)
+	
+		
+	}
+	return encoded, err
+}
+
