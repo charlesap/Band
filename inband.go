@@ -147,10 +147,12 @@ type ICCC struct {
 }
 
 var Me Shah
+var Yo Shah
 var Self Ident
 var MyNameStmt Stmt
 var MyNameClaim Claim
 var MyPrivateKey *rsa.PrivateKey
+var MyPrivateCert []byte
 var Bands []Shah
 var All map[Shah]ICCC = make(map[Shah]ICCC) // individual/band, By chain, Er chain, Ee chain for this Id
 var Topics map[Shah]CChain = make(map[Shah]CChain)
@@ -178,9 +180,9 @@ func (i Ident) Is() string {
 	return "somebody"
 }
 
-func getKeys(pkfn, bkfn string) (key *rsa.PrivateKey, pk, bk []byte, err error) {	
+func getKeys(pkfn, bkfn string) (key *rsa.PrivateKey, pkb, bkb []byte, err error) {	
 	var bkt []byte
-	if pk, err = ioutil.ReadFile(pkfn); err == nil { 
+	if pkb, err = ioutil.ReadFile(pkfn); err == nil { 
 		if bkt, err = ioutil.ReadFile(bkfn); err == nil {
 			
 			bka:= strings.Split(string(bkt)," ")
@@ -189,17 +191,17 @@ func getKeys(pkfn, bkfn string) (key *rsa.PrivateKey, pk, bk []byte, err error) 
 				err = errors.New("too few fields in public key file")
 			}else{
 				if l>3{  // count from end because options may contain quoted spaces
-					bk=[]byte(bka[l-2]+" "+bka[l-3]+" Id")
+					bkb=[]byte(bka[l-2]+" "+bka[l-3]+" Id")
 				}else{
-					bk=[]byte(bka[0]+" "+bka[1]+" Id")
+					bkb=[]byte(bka[0]+" "+bka[1]+" Id")
 				}
 			}
-			privPem, _ := pem.Decode(pk)
+			privPem, _ := pem.Decode(pkb)
 			privPemBytes := privPem.Bytes
 			key, err = x509.ParsePKCS1PrivateKey(privPemBytes)
 		}
 	}
-	return key, pk, bk, err
+	return key, pkb, bkb, err
 }
 
 func MakeClaim( affirm bool, count uint64, by, er, ee, st Shah) (c Claim, err error){
@@ -215,7 +217,7 @@ func MakeClaim( affirm bool, count uint64, by, er, ee, st Shah) (c Claim, err er
 
 
 	abuf := make([]byte, 8)
-	abuf[0]=1  //version 1 of the claim packing format for signatures... bytes 1-6 are undefined
+	abuf[0]=1  //version 1 of the claim packing format for signatures... bytes 1-6 should be zero
 	if affirm {
 		abuf[7]=0
 	}else{
@@ -226,7 +228,7 @@ func MakeClaim( affirm bool, count uint64, by, er, ee, st Shah) (c Claim, err er
 	binary.LittleEndian.PutUint64(cbuf, c.C)
 	
 
-	if sig, err = Sign( append(abuf, 
+	if sig, err = Sign(   append(abuf, 
                               append(cbuf, 
                               append(c.By[:], 
                               append(c.Er[:], 
@@ -238,7 +240,7 @@ func MakeClaim( affirm bool, count uint64, by, er, ee, st Shah) (c Claim, err er
 	return c, err
 }
 
-func WellFormedClaim( c Claim) bool {
+func Untampered( c Claim) bool {
 
 	return true
 }
@@ -251,35 +253,38 @@ func check(e error) {
 
 func claim2string( h string, c Claim ) string {
 	return  fmt.Sprintf(h+"\n") +
-		fmt.Sprintf("%t\n",MyNameClaim.Affirm) +
-		fmt.Sprintf("%d\n",MyNameClaim.C) +
-		base64.StdEncoding.EncodeToString(MyNameClaim.By[:])+"\n" +
-		base64.StdEncoding.EncodeToString(MyNameClaim.Er[:])+"\n" +
-		base64.StdEncoding.EncodeToString(MyNameClaim.Ee[:])+"\n" +
-		base64.StdEncoding.EncodeToString(MyNameClaim.St[:])+"\n" +
-		base64.StdEncoding.EncodeToString(MyNameClaim.Sig)+"\n" +
-		base64.StdEncoding.EncodeToString(MyNameClaim.Cl[:])+"\n"
+		fmt.Sprintf("%t\n",c.Affirm) +
+		fmt.Sprintf("%d\n",c.C) +
+		base64.StdEncoding.EncodeToString(c.By[:])+"\n" +
+		base64.StdEncoding.EncodeToString(c.Er[:])+"\n" +
+		base64.StdEncoding.EncodeToString(c.Ee[:])+"\n" +
+		base64.StdEncoding.EncodeToString(c.St[:])+"\n" +
+		base64.StdEncoding.EncodeToString(c.Sig)+"\n" +
+		base64.StdEncoding.EncodeToString(c.Cl[:])+"\n"
+}
+
+func stmt2string( h string, s Stmt ) string {
+        return  fmt.Sprintf(h+"\n") +
+                base64.StdEncoding.EncodeToString(s.Said)+"\n" +
+                base64.StdEncoding.EncodeToString(s.Sd[:])+"\n"
 }
 
 func initFromRSA(pfn, bfn, mfn, n string) (err error) {
-        var pk, bk []byte
-        if MyPrivateKey, pk, bk, err = getKeys(pfn, bfn); err == nil {
+        var bkb []byte
+        if MyPrivateKey, MyPrivateCert, bkb, err = getKeys(pfn, bfn); err == nil {
 		f, err := os.Create(mfn); check(err)
 		defer f.Close()
-        	_, err = f.WriteString(":MYPRIVATE:\n"); check(err)
-
-		_, err = f.WriteString(string(pk)+"\n"); check(err)
-		_, err = f.WriteString(":MYPUBLIC:\n"); check(err)
-                _, err = f.WriteString(string(bk)+"\n"); check(err)
-                Self.Pubkey = bk
-                _, err = f.WriteString(":MYID:"); check(err)
+                Self.Pubkey = bkb
                 Me = sha256.Sum256(Self.Pubkey)
                 Self.Id = Me
-                _, err = f.WriteString(base64.StdEncoding.EncodeToString(Me[:])+"\n"); check(err)
                 MyNameStmt.Said = []byte(n)
                 MyNameStmt.Sd = sha256.Sum256(MyNameStmt.Said)
+		Stmts[MyNameStmt.Sd]=MyNameStmt
                 if MyNameClaim, err = MakeClaim( true, 0, Me, Me, Me, MyNameStmt.Sd ); err == nil {
-                        _, err = f.WriteString(claim2string(":MYNAMECLAIM:",MyNameClaim)); check(err)
+                	Yo = MyNameClaim.Cl
+			Claims[Yo]=MyNameClaim
+			persist(mfn)
+                        //_, err = f.WriteString(claim2string(":MYNAMECLAIM:",MyNameClaim)); check(err)
                 }
         }
 
@@ -314,6 +319,23 @@ func recall( pfn, bfn, mfn, n string, init, force bool) (err error) {
 }
 
 func persist( mfn string ) (err error) {
+
+                f, err := os.Create(mfn); check(err)
+                defer f.Close()
+                _, err = f.WriteString(":MYPRIVATE:\n"); check(err)
+                _, err = f.WriteString(string(MyPrivateCert)+"\n"); check(err)
+                _, err = f.WriteString(":MYPUBLIC:\n"); check(err)
+                _, err = f.WriteString(string(Self.Pubkey)+"\n"); check(err)
+                _, err = f.WriteString(":MYID:"); check(err)
+                _, err = f.WriteString(base64.StdEncoding.EncodeToString(Me[:])+"\n"); check(err)
+                _, err = f.WriteString(":MYNM:"); check(err)
+                _, err = f.WriteString(base64.StdEncoding.EncodeToString(Yo[:])+"\n"); check(err)
+		for _,c := range Claims {
+			_, err = f.WriteString(claim2string(":CLAIM:",c)); check(err)
+		}
+                for _,s := range Stmts {
+                        _, err = f.WriteString(stmt2string(":STMT:",s)); check(err)
+                }       
 
 	return err
 }
