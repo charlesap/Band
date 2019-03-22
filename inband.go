@@ -243,6 +243,50 @@ func WellFormedClaim( c Claim) bool {
 	return true
 }
 
+func check(e error) {
+    if e != nil {
+        panic(e)
+    }
+}
+
+func claim2string( h string, c Claim ) string {
+	return  fmt.Sprintf(h+"\n") +
+		fmt.Sprintf("%t\n",MyNameClaim.Affirm) +
+		fmt.Sprintf("%d\n",MyNameClaim.C) +
+		base64.StdEncoding.EncodeToString(MyNameClaim.By[:])+"\n" +
+		base64.StdEncoding.EncodeToString(MyNameClaim.Er[:])+"\n" +
+		base64.StdEncoding.EncodeToString(MyNameClaim.Ee[:])+"\n" +
+		base64.StdEncoding.EncodeToString(MyNameClaim.St[:])+"\n" +
+		base64.StdEncoding.EncodeToString(MyNameClaim.Sig)+"\n" +
+		base64.StdEncoding.EncodeToString(MyNameClaim.Cl[:])+"\n"
+}
+
+func initFromRSA(pfn, bfn, mfn, n string) (err error) {
+        var pk, bk []byte
+        if MyPrivateKey, pk, bk, err = getKeys(pfn, bfn); err == nil {
+		f, err := os.Create(mfn); check(err)
+		defer f.Close()
+        	_, err = f.WriteString(":MYPRIVATE:\n"); check(err)
+
+		_, err = f.WriteString(string(pk)+"\n"); check(err)
+		_, err = f.WriteString(":MYPUBLIC:\n"); check(err)
+                _, err = f.WriteString(string(bk)+"\n"); check(err)
+                Self.Pubkey = bk
+                _, err = f.WriteString(":MYID:"); check(err)
+                Me = sha256.Sum256(Self.Pubkey)
+                Self.Id = Me
+                _, err = f.WriteString(base64.StdEncoding.EncodeToString(Me[:])+"\n"); check(err)
+                MyNameStmt.Said = []byte(n)
+                MyNameStmt.Sd = sha256.Sum256(MyNameStmt.Said)
+                if MyNameClaim, err = MakeClaim( true, 0, Me, Me, Me, MyNameStmt.Sd ); err == nil {
+                        _, err = f.WriteString(claim2string(":MYNAMECLAIM:",MyNameClaim)); check(err)
+                }
+        }
+
+	return err
+}
+
+
 func recall( pfn, bfn, mfn, n string, init, force bool) (err error) {
 	//var self Ident
 
@@ -251,40 +295,13 @@ func recall( pfn, bfn, mfn, n string, init, force bool) (err error) {
                         err = errors.New("The memory file does not exist and initialization was not requested.")
                 } else {
                         // initializing persistent store
-			
-			var pk, bk []byte
-			if MyPrivateKey, pk, bk, err = getKeys(pfn, bfn); err == nil {	
-				fmt.Println(":MYPRIVATE:")
-				fmt.Println(string(pk))
-                                fmt.Println(":MYPUBLIC:")
-                                fmt.Println(string(bk))
-				Self.Pubkey = bk
-                                fmt.Println(":MYID:")				
-                                Me = sha256.Sum256(Self.Pubkey)
-				Self.Id = Me
-                                fmt.Println(base64.StdEncoding.EncodeToString(Me[:]))
-				MyNameStmt.Said = []byte(n)
-				MyNameStmt.Sd = sha256.Sum256(MyNameStmt.Said)
-				if MyNameClaim, err = MakeClaim( true, 0, Me, Me, Me, MyNameStmt.Sd ); err == nil {
-					fmt.Println(":MYNAMECLAIM:")
-					fmt.Println(MyNameClaim.Affirm)
-					fmt.Println(MyNameClaim.C)
-					fmt.Println(base64.StdEncoding.EncodeToString(MyNameClaim.By[:]))
-					fmt.Println(base64.StdEncoding.EncodeToString(MyNameClaim.Er[:]))
-                                        fmt.Println(base64.StdEncoding.EncodeToString(MyNameClaim.Ee[:]))
-                                        fmt.Println(base64.StdEncoding.EncodeToString(MyNameClaim.St[:]))
-                                        fmt.Println(base64.StdEncoding.EncodeToString(MyNameClaim.Sig))
-                                        fmt.Println(base64.StdEncoding.EncodeToString(MyNameClaim.Cl[:]))
-				}
-			}
+			err = initFromRSA(pfn,bfn,mfn,n)
                 }
         } else {
                 if init {
 			if force {
 				// re-initializing persistent store
-                        	if MyPrivateKey, _, _, err = getKeys(pfn, bfn); err == nil {
-                        	}
-
+				err = initFromRSA(pfn,bfn,mfn,n)
 			}else{
                         	err = errors.New("The memory file already exists and force was not requested.")
 			}
