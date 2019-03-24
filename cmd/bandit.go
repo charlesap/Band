@@ -38,8 +38,9 @@ func main() {
 	iPtr := flag.Bool("init", false, "Initialize the history")
 	fPtr := flag.Bool("force", false, "Force initialization (re-initialize) the history")
 
-	pkeyPtr := flag.String("p", os.Getenv("HOME")+"/.ssh/id_rsa", "path to rsa private key file")
-	bkeyPtr := flag.String("b", os.Getenv("HOME")+"/.ssh/id_rsa.pub", "path to rsa public key file")
+        tkeyPtr := flag.String("t", "rsa", "type of initialization key pair to look for, e.g. 'rsa' or 'ed25519' or 'ssb'")
+	pkeyPtr := flag.String("p", os.Getenv("HOME")+"/.ssh/", "path to initialization key files")
+	
 	bandPtr := flag.String("h", os.Getenv("HOME")+"/.ssh/band_memory", "path to band_memory file")
         namePtr := flag.String("n", "Anonymous", "name for a new identity when initializing the history")
 	flag.Parse()
@@ -48,9 +49,13 @@ func main() {
 		os.Exit(0)
 	}
 	Setup()
-	_ = inband.Startup(*pkeyPtr, *bkeyPtr, *bandPtr, *namePtr, *iPtr, *fPtr, *dPtr)
-	Run()
-	_ = inband.Shutdown(*pkeyPtr, *bkeyPtr, *bandPtr, *dPtr)
+	err := inband.Startup(*tkeyPtr, *pkeyPtr, *bandPtr, *namePtr, *iPtr, *fPtr, *dPtr); if err == nil {
+		//Run()
+		//err = inband.Shutdown(*pkeyPtr, *bandPtr, *dPtr)
+	}
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 func Setup() {

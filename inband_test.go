@@ -34,32 +34,42 @@ import (
 )
 func Test_reporting_nonexistant_keys_and_bandmemory(t *testing.T) {
 	pkey := "/badpublickeyfilename"
-	bkey := "/badprivatekeyfilename"
+	ktype := "rsa"
 	band := "/badbandmemoryfilename"
 	name := "Anonymous"
 	i := true
 	f := false
 	d := false
-	want := "open /badpublickeyfilename: no such file or directory"
-	if got := Startup(pkey, bkey, band, name, i, f, d); got != nil && got.Error() != want {
+	want := "open /badpublickeyfilename/id_rsa: no such file or directory"
+	if got := Startup(ktype, pkey, band, name, i, f, d); got != nil && got.Error() != want {
 		t.Errorf("Load() = %q, want %q", got.Error(), want)
 	}else if got == nil{
                 t.Errorf("Load() = %q, want %q", error(nil), want)
 	}
 }
 
-func Test_Loading_ssh_keys(t *testing.T) {
-	pkey := os.Getenv("HOME")+"/.ssh/id_rsa"
-	bkey := os.Getenv("HOME")+"/.ssh/id_rsa.pub"
+func Test_Loading_keys(t *testing.T) {
+	pkey := os.Getenv("HOME")+"/.ssh"
 	band := os.Getenv("HOME")+"/.ssh/band_memory"
-	name := "Anonymous"
-        i := true
-        f := false
-        d := false
-        if got := Startup(pkey, bkey, band, name, i, f, d); got != nil {
+        if got := Startup("rsa", pkey, band, "Anonymous", true, false, false); got != nil {
                 t.Errorf("Load() = %q, expected error(nil)", got.Error())
         }
+        if got := Startup("ed25519", pkey, band, "Anonymous", true, true, false); got != nil {
+                t.Errorf("Load() = %q, expected error(nil)", got.Error())
+        }       
+        pkey = os.Getenv("HOME")+"/.ssb"
+        if got := Startup("ssb", pkey, band, "Anonymous", true, true, false); got != nil {
+                t.Errorf("Load() = %q, expected error(nil)", got.Error())
+        }
+
+}
 		
-	
+func Test_Recall(t *testing.T) {
+
+        band := os.Getenv("HOME")+"/.ssh/band_memory"
+	want := error(nil)
+	if got := recallFromFile(band); got != want {
+                t.Errorf("Load() = %q, want %q", got, want)
+	}
 }
 
