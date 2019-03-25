@@ -34,8 +34,8 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
-	"golang.org/x/crypto/ed25519" // golang.org/x/crypto
-	"encoding/hex"
+	"golang.org/x/crypto/ed25519"
+	//"encoding/hex"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/pem"
@@ -53,6 +53,15 @@ import (
 
 // DESIGN
 
+// Tribes have a memory while states have a history
+// Tribes have a way while states have a code
+// Sub-groups of the tribe delegate one of their own to the chief for service while kings designate officials to govern subjects.
+// Delegates may expect rewards from their group while officials demand tribute from their subjects
+
+// Worth of a system can be measured on reduction of: Death, Violation, Hunger, Exposure, Displacement, Isolation, Extraction, Limitation.
+// Democracy can be seen as a political alloy of the state and the tribe with fascism at one end and anarcho-something at the other
+// Socialism can be seen as an economic alloy of the state and the tribe with capitalism at one end and communism at the other
+
 // An Id is formed by creating a private/public key pair and taking the shah of the signed nonce-and-public-key.
 
 // If the Id is for a band then it  makes a claim with its Id as the By, Er, and Ee and the name as the St.
@@ -65,32 +74,20 @@ import (
 
 // A band will have its founders when at least two Ids symmetrically make and exchange 'in' upvote claims
 // of association with each other's Ee the band's Er
-
 // Each individual will also create their own name claim.
-
 // an individual may change their name by making a new name claim and downvoting their old one.
 // nicnames are when an individual makes a name claim for someone else.
-
 // individuals can claim or have bestowed on them other things such as email addresses, phone numbers, titles, etc.
 // other individuals can dispute the claims.
-
 // Global history is not maintained but an individual may keep and share a 'diary' of personal history
-
 // A 'in upvote' is the Stmt.Said "IN" and Affirm is 'true'. 'in downvote' is the same but where 'affirm' is false.
 // A claim with the same By, Er, Ee, and St but a higher-numbered C supplants earlier claims with teh same By, Er, Ee, and St.
-
 // An Id may be considered to be a member so long as it has more upvotes than downvotes by other members. This is a circular relation.
-
 // Other relastionships may be described between two individuals.
-
 // A Moot is when an Ident has a Visit with several other Idents requesting new Claims from them.
-
 // Anyone can Moot. Someone who Moots a lot might be made a leader, or might be downvoted out of the band to stop the bother.
-
 // Claims are affirmative or negative.
-
 // a Dog is an automaton with an Id that acts on its view of the consensus of the band.
-
 // An individual identity
 
 // a role is just another name for a person
@@ -176,6 +173,7 @@ var Self Ident
 var MyNameStmt Stmt
 var MyNameClaim Claim
 var MyPrivateRSAKey *rsa.PrivateKey
+var MyPrivateEDKey *ed25519.PrivateKey
 var MyPrivateKeyType string
 var MyPrivateCert []byte
 var Bands []Shah
@@ -205,7 +203,7 @@ func (i Ident) Is() string {
 	return "somebody"
 }
 
-func getKeys(typ, pkfn string) (key *rsa.PrivateKey, pkb, bkb []byte, err error) {
+func getKeys(typ, pkfn string) (rsakey *rsa.PrivateKey, edkey *ed25519.PrivateKey, pkb, bkb []byte, err error) {
 	var bkt []byte
         if typ == "rsa" {
 		if pkb, err = ioutil.ReadFile(pkfn+"/id_rsa"); err == nil {
@@ -224,14 +222,37 @@ func getKeys(typ, pkfn string) (key *rsa.PrivateKey, pkb, bkb []byte, err error)
 				}
 				privPem, _ := pem.Decode(pkb)
 				privPemBytes := privPem.Bytes
-				key, err = x509.ParsePKCS1PrivateKey(privPemBytes)
+				rsakey, err = x509.ParsePKCS1PrivateKey(privPemBytes)
 			}
 		}
-	}else{
-		err = errors.New("Don't know how to load "+typ+" keys on init.")
+	}else if typ == "ed25519" {
+                if pkb, err = ioutil.ReadFile(pkfn+"/id_ed25519"); err == nil {
+                        if bkt, err = ioutil.ReadFile(pkfn+"/id_ed25519.pub"); err == nil {
+
+                                bka := strings.Split(string(bkt), " ")
+                                l := len(bka)
+                                if l < 3 {
+                                        err = errors.New("too few fields in public key file")
+                                } else {
+                                        if l > 3 { // count from end because options may contain quoted spaces
+                                                bkb = []byte(bka[l-2] + " " + bka[l-3] + " Id")
+                                        } else {
+                                                bkb = []byte(bka[0] + " " + bka[1] + " Id")
+                                        }
+                                }
+                                privPem, _ := pem.Decode(pkb)
+                                privPemBytes := privPem.Bytes
+				ek := ed25519.PrivateKey(privPemBytes)
+				edkey = &ek                                
+                        }
+                }
+        }else if typ == "ssb" {
+                err = errors.New("ssb not implemented yet.")
+        }else{
+                err = errors.New("Don't know how to load "+typ+" keys on init.")
 	}
 	
-	return key, pkb, bkb, err
+	return rsakey, edkey, pkb, bkb, err
 }
 
 func MakeClaim(affirm bool, count uint64, by, er, ee, st Shah) (c Claim, err error) {
@@ -301,11 +322,11 @@ func stmt2string(h string, s Stmt) string {
 
 
 
-func initFromRSA(typ, pfn, mfn, n string) (err error) {
+func initFromKeys(typ, pfn, mfn, n string) (err error) {
 	var bkb []byte
 	MyPrivateKeyType = typ
-	if MyPrivateRSAKey, MyPrivateCert, bkb, err = getKeys(typ, pfn); err == nil {
-		fmt.Println("Initializing from SSH keys")		
+	if MyPrivateRSAKey, MyPrivateEDKey, MyPrivateCert, bkb, err = getKeys(typ, pfn); err == nil {
+		fmt.Println("Initializing public/private key pair")		
 		Self.Pubkey = bkb
 		Me = sha256.Sum256(Self.Pubkey)
 		Self.Id = Me
@@ -420,13 +441,13 @@ func recall(typ, pfn, mfn, n string, init, force bool) (err error) {
 			err = errors.New("The memory file does not exist and initialization was not requested.")
 		} else {
 			// initializing persistent store
-			err = initFromRSA(typ, pfn, mfn, n)
+			err = initFromKeys(typ, pfn, mfn, n)
 		}
 	} else {
 		if init {
 			if force {
 				// re-initializing persistent store
-				err = initFromRSA(typ, pfn, mfn, n)
+				err = initFromKeys(typ, pfn, mfn, n)
 			} else {
 				err = errors.New("The memory file already exists and force was not requested.")
 			}
@@ -531,22 +552,23 @@ func Sign(contents []byte) (encoded []byte, err error) {
 			encoded = signature //base64.StdEncoding.EncodeToString(signature)
 		}
 	}else{
-
+		pvk := *MyPrivateEDKey
+		encoded = ed25519.Sign(pvk, hashed[:])	
 	
 
 
-	    priv := "e06d3183d14159228433ed599221b80bd0a5ce8352e4bdf0262f76786ef1c74db7e7a9fea2c0eb269d61e3b38e450a22e754941ac78479d6c54e1faf6037881d"
-	    pub := "77ff84905a91936367c01360803104f92432fcd904a43511876df5cdf3e7e548"
-	    sig := "6834284b6b24c3204eb2fea824d82f88883a3d95e8b4a21b8c0ded553d17d17ddf9a8a7104b1258f30bed3787e6cb896fca78c58f8e03b5f18f14951a87d9a08"
+	    //priv := "e06d3183d14159228433ed599221b80bd0a5ce8352e4bdf0262f76786ef1c74db7e7a9fea2c0eb269d61e3b38e450a22e754941ac78479d6c54e1faf6037881d"
+	    //pub := "77ff84905a91936367c01360803104f92432fcd904a43511876df5cdf3e7e548"
+	    //sig := "6834284b6b24c3204eb2fea824d82f88883a3d95e8b4a21b8c0ded553d17d17ddf9a8a7104b1258f30bed3787e6cb896fca78c58f8e03b5f18f14951a87d9a08"
 	    // d := hex.EncodeToString([]byte(priv))
-	    privb, _ := hex.DecodeString(priv)
-	    pvk := ed25519.PrivateKey(privb)
-	    buffer := []byte("4:salt6:foobar3:seqi1e1:v12:Hello World!")
-	    sigb := ed25519.Sign(pvk, buffer)
-	    pubb, _ := hex.DecodeString(pub)
-	    sigb2, _ := hex.DecodeString(sig)
+	    //privb, _ := hex.DecodeString(priv)
+	    //pvk := ed25519.PrivateKey(privb)
+	    //buffer := []byte("4:salt6:foobar3:seqi1e1:v12:Hello World!")
+	    //sigb := ed25519.Sign(pvk, buffer)
+	    //pubb, _ := hex.DecodeString(pub)
+	    //sigb2, _ := hex.DecodeString(sig)
 
-	    if 1==2 { fmt.Println(priv,pub,sig,privb,pvk,buffer,sigb,pubb,sigb2)}
+	    //if 1==2 { fmt.Println(priv,pub,sig,privb,pvk,buffer,sigb,pubb,sigb2)}
 
 	}
 
