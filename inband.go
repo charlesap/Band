@@ -326,7 +326,7 @@ func initFromKeys(typ, pfn, mfn, n string) (err error) {
 	var bkb []byte
 	MyPrivateKeyType = typ
 	if MyPrivateRSAKey, MyPrivateEDKey, MyPrivateCert, bkb, err = getKeys(typ, pfn); err == nil {
-		fmt.Println("Initializing public/private key pair")		
+		//fmt.Println("Initializing public/private key pair")		
 		Self.Pubkey = bkb
 		Me = sha256.Sum256(Self.Pubkey)
 		Self.Id = Me
@@ -353,11 +353,18 @@ func recallFromFile(mfn string) (err error) {
 		for _,e := range a {
 		    l:=strings.Split(e,":\n")
 		    if err == nil {
-			if l[0]==":MYPRIVATE" {				
+                        if l[0]==":MYTYPE" {              
+                                MyPrivateKeyType = l[1]
+			}else if l[0]=="MYPRIVATE" {				
                                 MyPrivateCert = []byte(l[1])
                         	privPem, _ := pem.Decode(MyPrivateCert)
                         	privPemBytes := privPem.Bytes
-                        	MyPrivateRSAKey, err = x509.ParsePKCS1PrivateKey(privPemBytes)
+				if MyPrivateKeyType == "rsa"{
+                        		MyPrivateRSAKey, err = x509.ParsePKCS1PrivateKey(privPemBytes)
+				}else if MyPrivateKeyType == "ed25519"{
+                                	ek := ed25519.PrivateKey(privPemBytes)
+                                	MyPrivateEDKey = &ek
+				}
 
 			}else if l[0]=="MYPUBLIC" {
                                 pkb = []byte(l[1])
@@ -417,12 +424,12 @@ func recallFromFile(mfn string) (err error) {
 						}
                                         }
 				}
-				fmt.Println(base64.StdEncoding.EncodeToString(xb[:]))
+				//fmt.Println(base64.StdEncoding.EncodeToString(xb[:]))
 				Stmts[xb]=Stmt{txt,xb}
 			}
 		    }
 		}
-		fmt.Println(Stmts)
+		//fmt.Println(Stmts)
 		//Self = self
 		Self.Id = Me
 		Self.Pubkey = pkb
@@ -470,8 +477,13 @@ func recall(typ, pfn, mfn, n string, init, force bool) (err error) {
 func persist(mfn string) (err error) {
 	f, err := os.Create(mfn)
 	defer f.Close()
-	if err == nil {
-		
+        if err == nil {
+                _, err = f.WriteString(":MYTYPE:\n")
+        }
+        if err == nil {	
+                _, err = f.WriteString(MyPrivateKeyType+"\n")
+        }
+	if err == nil {		
 		_, err = f.WriteString(":MYPRIVATE:\n")
 	}
 	if err == nil {
@@ -552,7 +564,17 @@ func Sign(contents []byte) (encoded []byte, err error) {
 			encoded = signature //base64.StdEncoding.EncodeToString(signature)
 		}
 	}else{
-		pvk := *MyPrivateEDKey
+		pvk:=make([]byte,64)
+		pvka:=strings.Split(string(*MyPrivateEDKey),"ed25519")	
+		copy(pvk[0:64],pvka[2][40:104])
+		
+		
+		//kl:=int(pvka[2][3])+2
+		//pvk:=[]byte(pvka[1][4:kl+4])
+		//fmt.Println(kl,[]byte(pvka[1]))
+		
+		//pvk:=make([]byte,len(*MyPrivateEDKey))
+		//copy(pvk[:],*MyPrivateEDKey)
 		encoded = ed25519.Sign(pvk, hashed[:])	
 	
 
