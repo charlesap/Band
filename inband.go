@@ -177,10 +177,10 @@ var MyPrivateEDKey *ed25519.PrivateKey
 var MyPrivateKeyType string
 var MyPrivateCert []byte
 var Bands []Shah
-var All map[Shah]ICCC = make(map[Shah]ICCC) // individual/band, By chain, Er chain, Ee chain for this Id
-var Topics map[Shah]CChain = make(map[Shah]CChain)
-var Stmts map[Shah]Stmt = make(map[Shah]Stmt)
-var Claims map[Shah]Claim = make(map[Shah]Claim)
+var All map[Shah]ICCC
+var Topics map[Shah]CChain
+var Stmts map[Shah]Stmt
+var Claims map[Shah]Claim
 
 func (b Shah) Consider(c Claim) {
 }
@@ -442,6 +442,13 @@ func recallFromFile(mfn string) (err error) {
 
 func recall(typ, pfn, mfn, n string, init, force bool) (err error) {
 	//var self Ident
+
+	Bands = []Shah{}
+	All = make(map[Shah]ICCC) // individual/band, By chain, Er chain, Ee chain for this Id
+	Topics = make(map[Shah]CChain)
+	Stmts = make(map[Shah]Stmt)
+	Claims = make(map[Shah]Claim)
+
 
 	if _, mferr := os.Stat(mfn); mferr != nil {
 		if !init {

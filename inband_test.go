@@ -50,7 +50,7 @@ func Test_reporting_nonexistant_keys_and_bandmemory(t *testing.T) {
 
 func Test_Loading_keys(t *testing.T) {
 	pkey := os.Getenv("HOME")+"/.ssh"
-	band := os.Getenv("HOME")+"/.ssh/band_memory_test"
+	band := os.Getenv("HOME")+"/.ssh/band_memory_rsa"
         if got := Startup("foo", pkey, band, "Anonymous", true, true, false); got.Error() != "Don't know how to load foo keys on init." {
                 t.Errorf("Startup( /unknown key type/ ) = %q, expected error(nil)", got.Error())
         }       
@@ -62,6 +62,7 @@ func Test_Loading_keys(t *testing.T) {
         if got := recallFromFile(band); got != want {
                 t.Errorf("recallFromFile( /rsa/ ) = %q, want %q", got, want)
         }
+        band = os.Getenv("HOME")+"/.ssh/band_memory_ed25519"
 
         if got := Startup("ed25519", pkey, band, "Anonymous", true, true, false); got != nil {
                 t.Errorf("Startup( /ed25519/ ) = %q, expected error(nil)", got.Error())
