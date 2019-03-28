@@ -35,6 +35,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"golang.org/x/crypto/ed25519"
+        "golang.org/x/crypto/ssh"
 	//"encoding/hex"
 	"encoding/base64"
 	"encoding/binary"
@@ -174,7 +175,7 @@ var Self Ident
 var MyNameStmt Stmt
 var MyNameClaim Claim
 var MyPrivateRSAKey *rsa.PrivateKey
-var MyPublicRSAKey *rsa.PublicKey
+var MyPublicKey string
 var MyPrivateEDKey *ed25519.PrivateKey
 var MyPrivateKeyType string
 var MyPrivateCert []byte
@@ -625,18 +626,20 @@ func Sign(contents []byte) (encoded []byte, err error) {
 	    //if 1==2 { fmt.Println(priv,pub,sig,privb,pvk,buffer,sigb,pubb,sigb2)}
 
 	}
+	fmt.Println("checking signature:",Verify(contents,encoded,string(Self.Pubkey)))
 	return encoded, err
 }
 
 func Verify ( contents []byte, encoded []byte, pubkey string) (err error) {
 	
 	var block *pem.Block
-	
 	var o []byte
+	var verifyer ssh.PublicKey
+
+        hashed := sha256.Sum256(contents)
 
         if MyPrivateKeyType == "rsa" {
-		hashed := sha256.Sum256(contents)
-		pubKeyString := s2r.Translate(pubkey)
+		pubKeyString := s2r.Translate(string(pubkey))
 		if block, o = pem.Decode([]byte(pubKeyString)); o == nil {
 			err = errors.New("failed to parse PEM block containing the public key")
 		}else{
@@ -644,11 +647,18 @@ func Verify ( contents []byte, encoded []byte, pubkey string) (err error) {
 			if err2 != nil {
 				err=err2
 			}else{
-				
 				err = rsa.VerifyPKCS1v15(rpk.(*rsa.PublicKey), crypto.SHA256, hashed[:], encoded)
 			}
+		
 		}
 	}else{
+                if verifyer, _, _, _, err = ssh.ParseAuthorizedKey([]byte(pubkey)); err == nil {
+			vfb :=verifyer.Marshal()
+			if ! ed25519.Verify(vfb[len(vfb)-32:], hashed[:], encoded){
+				err = errors.New("failure to verify ed25519 signature")
+			}
+                }
+                
 
 	}
 	return err
