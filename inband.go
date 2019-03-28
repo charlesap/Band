@@ -35,7 +35,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"golang.org/x/crypto/ed25519"
-        "golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh"
 	//"encoding/hex"
 	"encoding/base64"
 	"encoding/binary"
@@ -47,8 +47,8 @@ import (
 	"io/ioutil"
 	"os"
 	//	"path/filepath"
-	"strings"
 	"strconv"
+	"strings"
 	//"time"
 )
 
@@ -132,16 +132,9 @@ import (
 // Being able to lock down your account so people who want to follow you need to be approved
 // A way to prevent your posts being indexed by malicious crawlers (meta issue)
 
-
 type Shah [32]byte // In this code if a variable name is two letters, it contains a Shah
 
-
-type CChain struct {
-	Next *CChain
-	This *Claim
-}
-
-type Stmt struct {  //a statement consisting of a public key is an identity statement
+type Stmt struct { //a statement consisting of a public key is an identity statement
 	Said []byte
 	Sd   Shah // Represents this statement
 }
@@ -157,37 +150,29 @@ type Claim struct {
 	Cl     Shah // Represents this claim
 }
 
-type ICCC struct {
-	I Stmt
-	B CChain
-	R CChain
-	E CChain
-}
+var Me Shah // of Stmt of identity
+var Yo Shah // of Claim of name by identity
+var Nm Shah // of Stmt of name
 
-var Me Shah  // of Stmt of identity
-var Yo Shah  // of Claim
-var Nm Shah  // of Stmt
-var Self Stmt
-var MyNameStmt Stmt
-var MyNameClaim Claim
-var MyPrivateRSAKey *rsa.PrivateKey
-var MyPublicKey string
-var MyPrivateEDKey *ed25519.PrivateKey
 var MyPrivateKeyType string
 var MyPrivateCert []byte
-var Bands []Shah
-var All map[Shah]ICCC
-var Topics map[Shah]CChain
-var Stmts map[Shah]Stmt
-var Claims map[Shah]Claim
+var MyPrivateRSAKey *rsa.PrivateKey
+var MyPrivateEDKey *ed25519.PrivateKey
 
-func (b Shah) Consider(c Claim) {
+var Bands []Shah
+
+var Stmts map[Shah]Stmt
+var Claims map[Shah]*Claim
+
+var Idents map[Shah]*Claim
+
+func (b Shah) Consider(c *Claim) {
 }
 
 func (b Shah) Moot(debug bool) {
 	if debug {
-		i := All[b]
-		fmt.Println("Mooting in", i.I.Is())
+		//i := All[b]
+		//fmt.Println("Mooting in", i.I.Is())
 	}
 }
 
@@ -204,9 +189,9 @@ func (i Stmt) Is() string {
 
 func getKeys(typ, pkfn string) (rsakey *rsa.PrivateKey, edkey *ed25519.PrivateKey, pkb, bkb []byte, err error) {
 	var bkt []byte
-        if typ == "rsa" {
-		if pkb, err = ioutil.ReadFile(pkfn+"/id_rsa"); err == nil {
-			if bkt, err = ioutil.ReadFile(pkfn+"/id_rsa.pub"); err == nil {
+	if typ == "rsa" {
+		if pkb, err = ioutil.ReadFile(pkfn + "/id_rsa"); err == nil {
+			if bkt, err = ioutil.ReadFile(pkfn + "/id_rsa.pub"); err == nil {
 
 				bka := strings.Split(string(bkt), " ")
 				l := len(bka)
@@ -224,91 +209,94 @@ func getKeys(typ, pkfn string) (rsakey *rsa.PrivateKey, edkey *ed25519.PrivateKe
 				rsakey, err = x509.ParsePKCS1PrivateKey(privPemBytes)
 			}
 		}
-	}else if typ == "ed25519" {
-                if pkb, err = ioutil.ReadFile(pkfn+"/id_ed25519"); err == nil {
-                        if bkt, err = ioutil.ReadFile(pkfn+"/id_ed25519.pub"); err == nil {
+	} else if typ == "ed25519" {
+		if pkb, err = ioutil.ReadFile(pkfn + "/id_ed25519"); err == nil {
+			if bkt, err = ioutil.ReadFile(pkfn + "/id_ed25519.pub"); err == nil {
 
-                                bka := strings.Split(string(bkt), " ")
-                                l := len(bka)
-                                if l < 3 {
-                                        err = errors.New("too few fields in public key file")
-                                } else {
-                                        if l > 3 { // count from end because options may contain quoted spaces
-                                                bkb = []byte(bka[l-2] + " " + bka[l-3] + " Id")
-                                        } else {
-                                                bkb = []byte(bka[0] + " " + bka[1] + " Id")
-                                        }
-                                }
-                                privPem, _ := pem.Decode(pkb)
-                                privPemBytes := privPem.Bytes
+				bka := strings.Split(string(bkt), " ")
+				l := len(bka)
+				if l < 3 {
+					err = errors.New("too few fields in public key file")
+				} else {
+					if l > 3 { // count from end because options may contain quoted spaces
+						bkb = []byte(bka[l-2] + " " + bka[l-3] + " Id")
+					} else {
+						bkb = []byte(bka[0] + " " + bka[1] + " Id")
+					}
+				}
+				privPem, _ := pem.Decode(pkb)
+				privPemBytes := privPem.Bytes
 				ek := ed25519.PrivateKey(privPemBytes)
-				edkey = &ek                                
-                        }
-                }
-        }else if typ == "ssb" {
-                err = errors.New("ssb not implemented yet.")
-        }else{
-                err = errors.New("Don't know how to load "+typ+" keys on init.")
+				edkey = &ek
+			}
+		}
+	} else if typ == "ssb" {
+		err = errors.New("ssb not implemented yet.")
+	} else {
+		err = errors.New("Don't know how to load " + typ + " keys on init.")
 	}
-	
+
 	return rsakey, edkey, pkb, bkb, err
 }
 
-func MakeClaim(affirm bool, count uint64, by, er, ee, st Shah) (c Claim, err error) {
-
+func MakeClaim(affirm bool, count uint64, by, er, ee, st Shah) (c *Claim, err error) {
 	var sig []byte
+	var a byte
 
-	c.Affirm = affirm
-	c.C = count
-	c.By = by
-	c.Er = er
-	c.Ee = ee
-	c.St = st
-
-	abuf := make([]byte, 8)
-	abuf[0] = 1 //version 1 of the claim packing format for signatures... bytes 1-6 should be zero
 	if affirm {
-		abuf[7] = 0
+		a = 0
 	} else {
-		abuf[7] = 255
+		a = 255
 	}
 
 	cbuf := make([]byte, 8)
-	binary.LittleEndian.PutUint64(cbuf, c.C)
+	binary.LittleEndian.PutUint64(cbuf, count)
 
-	xbuf:=append(abuf,
+	if sig, err = Sign(append([]byte{1, 0, 0, 0, 0, 0, 0, a},
 		append(cbuf,
-			append(c.By[:],
-				append(c.Er[:],
-					append(c.Ee[:],
-						c.St[:]...)...)...)...)...)
-	//fmt.Println(xbuf)
-	if sig, err = Sign(xbuf); err == nil {
-		c.Sig = sig
-		c.Cl = sha256.Sum256(c.Sig)
-	}
+			append(by[:],
+				append(er[:],
+					append(ee[:],
+						st[:]...)...)...)...)...)); err == nil {
 
-
-	if err == nil {
-
-
+		c = &Claim{affirm, count, by, er, ee, st, sig, sha256.Sum256(sig)}
 	}
 
 	return c, err
 }
 
-func Untampered(c Claim) bool {
+func Untampered(c *Claim) (ok bool) {
+    s, e := Stmts[c.By]
+    if !e {
+         ok = false
+    } else {
 
-	return true
+         abuf := make([]byte, 8)
+         abuf[0] = 1 //version 1 ... bytes 1-6 should be zero
+         if c.Affirm {
+                 abuf[7] = 0
+         } else {
+                 abuf[7] = 255
+         }
+
+         cbuf := make([]byte, 8)
+         binary.LittleEndian.PutUint64(cbuf, c.C)
+
+         q := append(abuf,
+                 append(cbuf,
+                         append(c.By[:],
+                                 append(c.Er[:],
+                                         append(c.Ee[:],
+                                                 c.St[:]...)...)...)...)...)
+         
+         if err := Verify(q, c.Sig, string(s.Said)); err == nil {
+		ok = true
+         }
+    }
+    return ok
 }
 
-func xcheck(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
-func claim2string(h string, c Claim) string {
+func claim2string(h string, c *Claim) string {
 	return fmt.Sprintf(h+"\n") +
 		fmt.Sprintf("%t\n", c.Affirm) +
 		fmt.Sprintf("%d\n", c.C) +
@@ -320,31 +308,31 @@ func claim2string(h string, c Claim) string {
 		base64.StdEncoding.EncodeToString(c.Cl[:]) + "\n"
 }
 
-
-
 func stmt2string(h string, s Stmt) string {
 	return fmt.Sprintf(h+"\n") +
 		base64.StdEncoding.EncodeToString(s.Said) + "\n" +
 		base64.StdEncoding.EncodeToString(s.Sd[:]) + "\n"
 }
 
-
-
 func initFromKeys(typ, pfn, mfn, n string) (err error) {
 	var bkb []byte
+	var mnc *Claim
+
 	MyPrivateKeyType = typ
 	if MyPrivateRSAKey, MyPrivateEDKey, MyPrivateCert, bkb, err = getKeys(typ, pfn); err == nil {
-		//fmt.Println("Initializing public/private key pair")		
-		Self.Said = bkb
-		Me = sha256.Sum256(Self.Said)
-		Self.Sd = Me
-		MyNameStmt.Said = []byte(n)
-		MyNameStmt.Sd = sha256.Sum256(MyNameStmt.Said)
-		Nm = MyNameStmt.Sd
-		Stmts[MyNameStmt.Sd] = MyNameStmt
-		if MyNameClaim, err = MakeClaim(true, 0, Me, Me, Me, MyNameStmt.Sd); err == nil {
-			Yo = MyNameClaim.Cl
-			Claims[Yo] = MyNameClaim
+
+		Me = sha256.Sum256(bkb)
+		Stmts[Me] = Stmt{bkb, sha256.Sum256(bkb)}
+		Nm = sha256.Sum256([]byte(n))
+		//	MyNameStmt.Said = []byte(n)
+		//	MyNameStmt.Sd = Nm
+
+		Stmts[Nm] = Stmt{[]byte(n), Nm}
+
+		if mnc, err = MakeClaim(true, 0, Me, Me, Me, Nm); err == nil {
+			Yo = mnc.Cl
+			Claims[Yo] = mnc
+			Idents[Yo] = mnc
 			err = persist(mfn)
 		}
 	}
@@ -353,137 +341,114 @@ func initFromKeys(typ, pfn, mfn, n string) (err error) {
 }
 
 func recallFromFile(mfn string) (err error) {
-	var b,x []byte
+	var b, x []byte
 	//var self Ident
-	
-	
-        if b, err = ioutil.ReadFile(mfn); err == nil {
-        	a:=strings.Split(string(b),"\n:")
-		for _,e := range a {
-		    l:=strings.Split(e,":\n")
-		    if err == nil {
-                        if l[0]==":MYTYPE" {              
-                                MyPrivateKeyType = l[1]
-			}else if l[0]=="MYPRIVATE" {				
-                                MyPrivateCert = []byte(l[1])
-                        	privPem, _ := pem.Decode(MyPrivateCert)
-                        	privPemBytes := privPem.Bytes
-				if MyPrivateKeyType == "rsa"{
-                        		MyPrivateRSAKey, err = x509.ParsePKCS1PrivateKey(privPemBytes)
-				}else if MyPrivateKeyType == "ed25519"{
-                                	ek := ed25519.PrivateKey(privPemBytes)
-                                	MyPrivateEDKey = &ek
-				}
 
-                        }else if l[0]=="MYID" {
-                                if x , err = base64.StdEncoding.DecodeString(l[1]); err == nil {
-					copy(Me[:],x)
-					
-				}
-                        }else if l[0]=="MYNM" {            
-                                if x , err = base64.StdEncoding.DecodeString(l[1]); err == nil {
-					copy(Yo[:],x)
-				}
-                        }else if l[0]=="STMT" {
-                                var txt []byte
-                                var xb Shah
-                                ll:=strings.Split(l[1],"\n")
-                                if len(ll)>1 {
-
-                                        if txt , err = base64.StdEncoding.DecodeString(ll[0]); err == nil {
-
-                                                if x , err = base64.StdEncoding.DecodeString(ll[1]); err == nil {
-                                                        copy(xb[:],x)
-                                                }
-                                        }
-                                }
-
-                                Stmts[xb]=Stmt{txt,xb}
-                        }else if l[0]=="CLAIM" {
-				c := new(Claim)
-                                ll:=strings.Split(l[1],"\n")
-                                if len(ll)>7 {
-                                        var txt []byte
-					if ll[0] == "true" {
-						c.Affirm = true
-					}else{
-						c.Affirm = false
+	if b, err = ioutil.ReadFile(mfn); err == nil {
+		a := strings.Split(string(b), "\n:")
+		for _, e := range a {
+			l := strings.Split(e, ":\n")
+			if err == nil {
+				if l[0] == ":MYTYPE" {
+					MyPrivateKeyType = l[1]
+				} else if l[0] == "MYPRIVATE" {
+					MyPrivateCert = []byte(l[1])
+					privPem, _ := pem.Decode(MyPrivateCert)
+					privPemBytes := privPem.Bytes
+					if MyPrivateKeyType == "rsa" {
+						MyPrivateRSAKey, err = x509.ParsePKCS1PrivateKey(privPemBytes)
+					} else if MyPrivateKeyType == "ed25519" {
+						ek := ed25519.PrivateKey(privPemBytes)
+						MyPrivateEDKey = &ek
 					}
-					count:=0
-					if count, err = strconv.Atoi(ll[1]); err == nil {
-						c.C = uint64(count) 
-					}
-                                        if x , err = base64.StdEncoding.DecodeString(ll[2]); err == nil {
-                                                copy(c.By[:],x)
-                                        }
-                                        if x , err = base64.StdEncoding.DecodeString(ll[3]); err == nil {
-                                                copy(c.Er[:],x)
-                                        }
-                                        if x , err = base64.StdEncoding.DecodeString(ll[4]); err == nil {
-                                                copy(c.Ee[:],x)
-                                        }
-                                        if x , err = base64.StdEncoding.DecodeString(ll[5]); err == nil {
-                                                copy(c.St[:],x)
-                                        }
-                                        if txt , err = base64.StdEncoding.DecodeString(ll[6]); err == nil {
-                                                c.Sig=txt
-                                        }
-                                        if x , err = base64.StdEncoding.DecodeString(ll[7]); err == nil {
-                                                copy(c.Cl[:],x)
-                                        }
-					s,e:=Stmts[c.By]; if !e {
-						err = errors.New("Claim "+base64.StdEncoding.EncodeToString(c.Cl[:])+" has no claimer")
-					}else{
-						//fmt.Println("Have claimer",base64.StdEncoding.EncodeToString(s.Sd[:]),
-						//	"for claim",base64.StdEncoding.EncodeToString(c.Cl[:]))
-						
-					        abuf := make([]byte, 8) 
-					        abuf[0] = 1 //version 1 ... bytes 1-6 should be zero
-					        if c.Affirm {
-					                abuf[7] = 0
-					        } else {
-					                abuf[7] = 255
-					        }
 
-					        cbuf := make([]byte, 8)
-					        binary.LittleEndian.PutUint64(cbuf, c.C)
-
-					        q:= append(abuf,
-					                append(cbuf,
-					                        append(c.By[:],
-					                                append(c.Er[:],
-					                                        append(c.Ee[:],
-					                                                c.St[:]...)...)...)...)...)
-						//fmt.Println(q)
-                				err = Verify(q,c.Sig,string(s.Said))
-                
-        
-
-
-
+				} else if l[0] == "MYID" {
+					if x, err = base64.StdEncoding.DecodeString(l[1]); err == nil {
+						copy(Me[:], x)
 
 					}
-                                }else{
-					
-					err = errors.New("too few lines in claim entry")
+				} else if l[0] == "MYNM" {
+					if x, err = base64.StdEncoding.DecodeString(l[1]); err == nil {
+						copy(Yo[:], x)
+					}
+				} else if l[0] == "STMT" {
+					var txt []byte
+					var xb Shah
+					ll := strings.Split(l[1], "\n")
+					if len(ll) > 1 {
+
+						if txt, err = base64.StdEncoding.DecodeString(ll[0]); err == nil {
+
+							if x, err = base64.StdEncoding.DecodeString(ll[1]); err == nil {
+								copy(xb[:], x)
+							}
+						}
+					}
+
+					Stmts[xb] = Stmt{txt, xb}
+				} else if l[0] == "CLAIM" {
+					c := new(Claim)
+					ll := strings.Split(l[1], "\n")
+					if len(ll) > 7 {
+						var txt []byte
+						if ll[0] == "true" {
+							c.Affirm = true
+						} else {
+							c.Affirm = false
+						}
+						count := 0
+						if count, err = strconv.Atoi(ll[1]); err == nil {
+							c.C = uint64(count)
+						}
+						if x, err = base64.StdEncoding.DecodeString(ll[2]); err == nil {
+							copy(c.By[:], x)
+						}
+						if x, err = base64.StdEncoding.DecodeString(ll[3]); err == nil {
+							copy(c.Er[:], x)
+						}
+						if x, err = base64.StdEncoding.DecodeString(ll[4]); err == nil {
+							copy(c.Ee[:], x)
+						}
+						if x, err = base64.StdEncoding.DecodeString(ll[5]); err == nil {
+							copy(c.St[:], x)
+						}
+						if txt, err = base64.StdEncoding.DecodeString(ll[6]); err == nil {
+							c.Sig = txt
+						}
+						if x, err = base64.StdEncoding.DecodeString(ll[7]); err == nil {
+							copy(c.Cl[:], x)
+						}
+						if Untampered(c) {
+                                                               Claims[c.Cl] = c
+                                                                if (c.By == c.Er) && (c.Er == c.Ee) {
+                                                                        Idents[c.Cl] = c
+                                                                }
+						}else{
+							err = errors.New("Unable to verify claim "+ base64.StdEncoding.EncodeToString(c.Cl[:]))
+						}
+					} else {
+
+						err = errors.New("too few lines in claim entry")
+					}
+
 				}
-                                Claims[c.Cl]=*c
 			}
-		    }
 		}
-		Self.Sd = Me
-		Self.Said = Stmts[Me].Said
 
-                var lk bool
-                MyNameClaim,lk = Claims[Yo];if ! lk {
-                        err = errors.New("My Name Claim not found")
-                }else{  
-                        MyNameStmt,lk = Stmts[MyNameClaim.St];if ! lk {
-                                err = errors.New("My Name Statement not found")
-                        }else{  
-                                Nm = MyNameClaim.St
-                        }
-                }       
+		var lk bool
+		var mnc *Claim
+
+		mnc, lk = Claims[Yo]
+		if !lk {
+			err = errors.New("My Name Claim not found")
+		} else {
+			_, lk = Stmts[mnc.St]
+			if !lk {
+				err = errors.New("My Name Statement not found")
+			} else {
+				Nm = mnc.St
+			}
+		}
 
 	}
 	return err
@@ -491,14 +456,13 @@ func recallFromFile(mfn string) (err error) {
 }
 
 func recall(typ, pfn, mfn, n string, init, force bool) (err error) {
-	//var self Ident
 
 	Bands = []Shah{}
-	All = make(map[Shah]ICCC) // individual/band, By chain, Er chain, Ee chain for this Id
-	Topics = make(map[Shah]CChain)
+	//All = make(map[Shah]ICCC) // individual/band, By chain, Er chain, Ee chain for this Id
+	//Topics = make(map[Shah]CChain)
 	Stmts = make(map[Shah]Stmt)
-	Claims = make(map[Shah]Claim)
-
+	Claims = make(map[Shah]*Claim)
+	Idents = make(map[Shah]*Claim)
 
 	if _, mferr := os.Stat(mfn); mferr != nil {
 		if !init {
@@ -517,19 +481,20 @@ func recall(typ, pfn, mfn, n string, init, force bool) (err error) {
 			}
 		} else {
 			// loading from persistent store
-		
+
 			err = recallFromFile(mfn)
 		}
 	}
 	if err == nil {
-        		fmt.Println("         Hello ",string(MyNameStmt.Said))
-                        fmt.Println("           me:",base64.StdEncoding.EncodeToString(Me[:]))
-                        fmt.Println("           yo:",base64.StdEncoding.EncodeToString(Yo[:]))
-                        fmt.Println("           nm:",base64.StdEncoding.EncodeToString(Nm[:]))
+		mnm, ok := Stmts[Nm]
+		if !ok {
+			err = errors.New("Lost my name")
+		}
+		fmt.Println("         Hello ", string(mnm.Said))
+		fmt.Println("           me:", base64.StdEncoding.EncodeToString(Me[:]))
+		fmt.Println("           yo:", base64.StdEncoding.EncodeToString(Yo[:]))
+		fmt.Println("           nm:", base64.StdEncoding.EncodeToString(Nm[:]))
 	}
- 		
-	
-
 
 	return err
 }
@@ -537,13 +502,13 @@ func recall(typ, pfn, mfn, n string, init, force bool) (err error) {
 func persist(mfn string) (err error) {
 	f, err := os.Create(mfn)
 	defer f.Close()
-        if err == nil {
-                _, err = f.WriteString(":MYTYPE:\n")
-        }
-        if err == nil {	
-                _, err = f.WriteString(MyPrivateKeyType+"\n")
-        }
-	if err == nil {		
+	if err == nil {
+		_, err = f.WriteString(":MYTYPE:\n")
+	}
+	if err == nil {
+		_, err = f.WriteString(MyPrivateKeyType + "\n")
+	}
+	if err == nil {
 		_, err = f.WriteString(":MYPRIVATE:\n")
 	}
 	if err == nil {
@@ -561,21 +526,29 @@ func persist(mfn string) (err error) {
 	if err == nil {
 		_, err = f.WriteString(base64.StdEncoding.EncodeToString(Yo[:]) + "\n")
 	}
-        if err == nil {
-                _, err = f.WriteString(stmt2string(":STMT:", Self))
-        }
-        if err == nil {
-                _, err = f.WriteString(stmt2string(":STMT:", MyNameStmt))
-        }
-        if err == nil {
-                for i, s := range Stmts {
-		   if (i != Self.Sd) && (i != MyNameStmt.Sd) { 
-                        if err == nil { 
-                                _, err = f.WriteString(stmt2string(":STMT:", s))
-                        }       
-		   }
-                }
-        }
+	slf, ok := Stmts[Me]
+	if !ok {
+		err = errors.New("Persist: Lost myself")
+	}
+	if err == nil {
+		_, err = f.WriteString(stmt2string(":STMT:", slf))
+	}
+	mnm, ok := Stmts[Nm]
+	if !ok {
+		err = errors.New("Persist: Lost my name")
+	}
+	if err == nil {
+		_, err = f.WriteString(stmt2string(":STMT:", mnm))
+	}
+	if err == nil {
+		for i, s := range Stmts {
+			if (i != Me) && (i != Nm) {
+				if err == nil {
+					_, err = f.WriteString(stmt2string(":STMT:", s))
+				}
+			}
+		}
+	}
 	if err == nil {
 		for _, c := range Claims {
 			if err == nil {
@@ -590,7 +563,7 @@ func persist(mfn string) (err error) {
 func Startup(typ, pfn, mfn, n string, init, force, debug bool) (err error) {
 	if debug {
 		fmt.Println("loading keys identities and claims...")
-		fmt.Println(typ, pfn, mfn, n, Me, Bands, All, Stmts, Claims)
+		//fmt.Println(typ, pfn, mfn, n, Me, Bands, All, Stmts, Claims)
 	}
 
 	if err = recall(typ, pfn, mfn, n, init, force); err != nil {
@@ -611,9 +584,9 @@ func Shutdown(typ, pfn, mfn string, debug bool) (err error) {
 
 	//if err = persist(mfn); err != nil {
 
-		if debug {
-			fmt.Println("stored!")
-		}
+	if debug {
+		fmt.Println("stored!")
+	}
 	//}
 	return err
 }
@@ -624,52 +597,50 @@ func Sign(contents []byte) (encoded []byte, err error) {
 	signature := []byte{}
 	if MyPrivateKeyType == "rsa" {
 		if signature, err = rsa.SignPKCS1v15(rand.Reader, MyPrivateRSAKey, crypto.SHA256, hashed[:]); err == nil {
-			encoded = signature 
+			encoded = signature
 		}
-	}else{
-		pvk:=make([]byte,64)
-		pvka:=strings.Split(string(*MyPrivateEDKey),"ed25519")	
-		copy(pvk[0:64],pvka[2][40:104])
-		encoded = ed25519.Sign(pvk, hashed[:])	
+	} else {
+		pvk := make([]byte, 64)
+		pvka := strings.Split(string(*MyPrivateEDKey), "ed25519")
+		copy(pvk[0:64], pvka[2][40:104])
+		encoded = ed25519.Sign(pvk, hashed[:])
 	}
 	//fmt.Println("checking signature:",Verify(contents,encoded,string(Self.Said)))
 	return encoded, err
 }
 
-func Verify ( contents []byte, encoded []byte, pubkey string) (err error) {
-	
+func Verify(contents []byte, encoded []byte, pubkey string) (err error) {
+
 	var block *pem.Block
 	var o []byte
 	var verifyer ssh.PublicKey
 
-        hashed := sha256.Sum256(contents)
-	pka:=strings.Split(pubkey," ")
+	hashed := sha256.Sum256(contents)
+	pka := strings.Split(pubkey, " ")
 	//fmt.Println("Verifying with",pka[0])
-        if pka[0] == "ssh-rsa" {
+	if pka[0] == "ssh-rsa" {
 		pubKeyString := s2r.Translate(string(pubkey))
 		if block, o = pem.Decode([]byte(pubKeyString)); o == nil {
 			err = errors.New("failed to parse PEM block containing the public key")
-		}else{
+		} else {
 			rpk, err2 := x509.ParsePKIXPublicKey(block.Bytes)
 			if err2 != nil {
-				err=err2
-			}else{
+				err = err2
+			} else {
 				err = rsa.VerifyPKCS1v15(rpk.(*rsa.PublicKey), crypto.SHA256, hashed[:], encoded)
 			}
-		
+
 		}
-	}else  if pka[0] == "ssh-ed25519" {
-                if verifyer, _, _, _, err = ssh.ParseAuthorizedKey([]byte(pubkey)); err == nil {
-			vfb :=verifyer.Marshal()
-			if ! ed25519.Verify(vfb[len(vfb)-32:], hashed[:], encoded){
+	} else if pka[0] == "ssh-ed25519" {
+		if verifyer, _, _, _, err = ssh.ParseAuthorizedKey([]byte(pubkey)); err == nil {
+			vfb := verifyer.Marshal()
+			if !ed25519.Verify(vfb[len(vfb)-32:], hashed[:], encoded) {
 				err = errors.New("failure to verify ed25519 signature")
 			}
-                }
-                
+		}
 
-	}else{
-		err=errors.New("can't handle verifying with "+pka[0]+" public keys yet.")
+	} else {
+		err = errors.New("can't handle verifying with " + pka[0] + " public keys yet.")
 	}
 	return err
 }
-
