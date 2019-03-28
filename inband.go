@@ -600,33 +600,9 @@ func Sign(contents []byte) (encoded []byte, err error) {
 		pvk:=make([]byte,64)
 		pvka:=strings.Split(string(*MyPrivateEDKey),"ed25519")	
 		copy(pvk[0:64],pvka[2][40:104])
-		
-		
-		//kl:=int(pvka[2][3])+2
-		//pvk:=[]byte(pvka[1][4:kl+4])
-		//fmt.Println(kl,[]byte(pvka[1]))
-		
-		//pvk:=make([]byte,len(*MyPrivateEDKey))
-		//copy(pvk[:],*MyPrivateEDKey)
 		encoded = ed25519.Sign(pvk, hashed[:])	
-	
-
-
-	    //priv := "e06d3183d14159228433ed599221b80bd0a5ce8352e4bdf0262f76786ef1c74db7e7a9fea2c0eb269d61e3b38e450a22e754941ac78479d6c54e1faf6037881d"
-	    //pub := "77ff84905a91936367c01360803104f92432fcd904a43511876df5cdf3e7e548"
-	    //sig := "6834284b6b24c3204eb2fea824d82f88883a3d95e8b4a21b8c0ded553d17d17ddf9a8a7104b1258f30bed3787e6cb896fca78c58f8e03b5f18f14951a87d9a08"
-	    // d := hex.EncodeToString([]byte(priv))
-	    //privb, _ := hex.DecodeString(priv)
-	    //pvk := ed25519.PrivateKey(privb)
-	    //buffer := []byte("4:salt6:foobar3:seqi1e1:v12:Hello World!")
-	    //sigb := ed25519.Sign(pvk, buffer)
-	    //pubb, _ := hex.DecodeString(pub)
-	    //sigb2, _ := hex.DecodeString(sig)
-
-	    //if 1==2 { fmt.Println(priv,pub,sig,privb,pvk,buffer,sigb,pubb,sigb2)}
-
 	}
-	fmt.Println("checking signature:",Verify(contents,encoded,string(Self.Pubkey)))
+	//fmt.Println("checking signature:",Verify(contents,encoded,string(Self.Pubkey)))
 	return encoded, err
 }
 
@@ -637,8 +613,9 @@ func Verify ( contents []byte, encoded []byte, pubkey string) (err error) {
 	var verifyer ssh.PublicKey
 
         hashed := sha256.Sum256(contents)
-
-        if MyPrivateKeyType == "rsa" {
+	pka:=strings.Split(pubkey," ")
+	//fmt.Println("Verifying with",pka[0])
+        if pka[0] == "ssh-rsa" {
 		pubKeyString := s2r.Translate(string(pubkey))
 		if block, o = pem.Decode([]byte(pubKeyString)); o == nil {
 			err = errors.New("failed to parse PEM block containing the public key")
@@ -651,7 +628,7 @@ func Verify ( contents []byte, encoded []byte, pubkey string) (err error) {
 			}
 		
 		}
-	}else{
+	}else  if pka[0] == "ssh-ed25519" {
                 if verifyer, _, _, _, err = ssh.ParseAuthorizedKey([]byte(pubkey)); err == nil {
 			vfb :=verifyer.Marshal()
 			if ! ed25519.Verify(vfb[len(vfb)-32:], hashed[:], encoded){
@@ -660,6 +637,8 @@ func Verify ( contents []byte, encoded []byte, pubkey string) (err error) {
                 }
                 
 
+	}else{
+		err=errors.New("can't handle verifying with "+pka[0]+" public keys yet.")
 	}
 	return err
 }
