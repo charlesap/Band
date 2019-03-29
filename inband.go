@@ -134,7 +134,7 @@ import (
 
 type Shah [32]byte // In this code if a variable name is two letters, it contains a Shah
 
-type Stmt struct { //a statement consisting of a public key is an identity statement
+type Stmt struct { 
 	Said []byte
 	Sd   Shah // Represents this statement
 }
@@ -142,9 +142,9 @@ type Stmt struct { //a statement consisting of a public key is an identity state
 type Claim struct {
 	Affirm bool
 	C      uint64 // Increment for superceding claims
-	By     Shah
-	Er     Shah
-	Ee     Shah
+	By     Shah   // - To statements consisting
+	Er     Shah   // - of a public key
+	Ee     Shah   // - (identity statements)
 	St     Shah
 	Sig    []byte
 	Cl     Shah // Represents this claim
