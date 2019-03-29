@@ -111,7 +111,7 @@ func What(debug bool) {
 }
 
 func New(g,n string, debug bool) {
-
+	inband.NewBand(n)
 }       
 
 func Show(s string, debug bool) {

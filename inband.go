@@ -313,6 +313,32 @@ func stmt2string(h string, s Stmt) string {
 		base64.StdEncoding.EncodeToString(s.Sd[:]) + "\n"
 }
 
+func NewBand( n string ) (err error) {
+	var pubk ed25519.PublicKey
+	var privk []byte
+	var bnc *Claim
+	
+	
+
+	if pubk,privk,err = ed25519.GenerateKey(nil); err == nil {
+		
+		//fmt.Println("new public key:",base64.StdEncoding.EncodeToString(pubk))
+		s,_:=ssh.NewPublicKey(pubk)
+		spk:=ssh.MarshalAuthorizedKey(s)
+		
+        	it := sha256.Sum256(spk)
+        	Stmts[it] = Stmt{spk, sha256.Sum256(spk)}
+
+                nm := sha256.Sum256([]byte(n))
+                Stmts[nm] = Stmt{[]byte(n), nm}
+
+                bnc, err = MakeClaim(true, 18446744073709551615, it, it, it, nm)
+
+		if 1==2 {fmt.Println(privk,bnc)}
+	}
+	return err
+}
+
 func initFromKeys(typ, pfn, mfn, n string) (err error) {
 	var bkb []byte
 	var mnc *Claim
@@ -323,8 +349,6 @@ func initFromKeys(typ, pfn, mfn, n string) (err error) {
 		Me = sha256.Sum256(bkb)
 		Stmts[Me] = Stmt{bkb, sha256.Sum256(bkb)}
 		Nm = sha256.Sum256([]byte(n))
-		//	MyNameStmt.Said = []byte(n)
-		//	MyNameStmt.Sd = Nm
 
 		Stmts[Nm] = Stmt{[]byte(n), Nm}
 
