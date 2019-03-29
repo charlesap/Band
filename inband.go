@@ -159,12 +159,11 @@ var MyPrivateCert []byte
 var MyPrivateRSAKey *rsa.PrivateKey
 var MyPrivateEDKey *ed25519.PrivateKey
 
-var Bands []Shah
-
 var Stmts map[Shah]Stmt
 var Claims map[Shah]*Claim
 
 var Idents map[Shah]*Claim
+var Bands map[Shah]*Claim
 
 func (b Shah) Consider(c *Claim) {
 }
@@ -457,12 +456,13 @@ func recallFromFile(mfn string) (err error) {
 
 func recall(typ, pfn, mfn, n string, init, force bool) (err error) {
 
-	Bands = []Shah{}
+	
 	//All = make(map[Shah]ICCC) // individual/band, By chain, Er chain, Ee chain for this Id
 	//Topics = make(map[Shah]CChain)
 	Stmts = make(map[Shah]Stmt)
 	Claims = make(map[Shah]*Claim)
 	Idents = make(map[Shah]*Claim)
+        Bands = make(map[Shah]*Claim)
 
 	if _, mferr := os.Stat(mfn); mferr != nil {
 		if !init {

@@ -27,12 +27,15 @@
 
 package main
 
-import "fmt"
-import "flag"
-import "os"
-import "bufio"
-import "strings"
-import "github.com/charlesap/Inband"
+import (
+	"fmt"
+	"flag"
+	"os"
+	"bufio"
+	"strings"
+	"encoding/base64"
+	"github.com/charlesap/Inband"
+)
 
 func main() {
 	vPtr := flag.Bool("version", false, "Print the version of bandit and exit")
@@ -67,24 +70,49 @@ func Setup() {
 
 func Help(debug bool) {
 	fmt.Println("Bandit Shell Commands:")
-        fmt.Println("   exit             - Exit the bandit shell.")
-        fmt.Println("   who              - print out identities.")
-        fmt.Println("   show me|identity - print out an identity.")
+        fmt.Println("   exit               - Exit the bandit shell.")
+        fmt.Println("   who                - print out identities.")
+        fmt.Println("   what               - print out groups.")
+        fmt.Println("   show me|<identity> - print out an identity.")
+        fmt.Println("   find <name>        - find the identity of a name.")
+        fmt.Println("   new band <name>   - create a new band.")
+
 
 }
 
 func Who(debug bool) {
 	
-        for _,c := range inband.Idents {
+        for id,c := range inband.Idents {
 		s,x := inband.Stmts[c.St]
 		if x {
 			fmt.Println(string(s.Said))
+                        fmt.Println(base64.StdEncoding.EncodeToString(id[:]))
+
 		}else{
 			fmt.Println("Couldn't match a name to an identity. Sorry...")
 		}
         }
 
 }
+
+func What(debug bool) {
+        
+        for id,b := range inband.Bands {
+                s,x := inband.Stmts[b.St]
+                if x { 
+                        fmt.Println(string(s.Said))
+                        fmt.Println(base64.StdEncoding.EncodeToString(id[:]))
+                        
+                }else{  
+                        fmt.Println("Couldn't match a name to an identity. Sorry...")
+                }       
+        }       
+        
+}
+
+func New(g,n string, debug bool) {
+
+}       
 
 func Show(s string, debug bool) {
 	var id inband.Shah
@@ -94,13 +122,52 @@ func Show(s string, debug bool) {
 	}
         c,x := inband.Idents[id]
 	if x {
-		fmt.Println(c)
+                s,x := inband.Stmts[c.St]
+                if x {
+                        fmt.Println(string(s.Said))
+                        fmt.Println(base64.StdEncoding.EncodeToString(id[:]))
+                }else{
+                        fmt.Println("Couldn't match a name to an identity. Sorry...")
+                }
+                s,x = inband.Stmts[c.By]
+                if x {
+                        fmt.Println(string(s.Said))
+                }else{
+                        fmt.Println("Couldn't match a public key to an identity. Sorry...")
+                }
+
+
 	}else{
 		fmt.Println(s,"not found.")
 	}
         
 
 }
+
+func Find(f string, debug bool) {
+        for id, c := range inband.Idents { 
+		n:=""
+                s,x := inband.Stmts[c.St]
+                if x { 
+                        n=string(s.Said)
+		}
+		if n == f {
+                        fmt.Println(string(s.Said))
+                        fmt.Println(base64.StdEncoding.EncodeToString(id[:]))
+
+                	s,x = inband.Stmts[c.By]
+                	if x {
+                	        fmt.Println(string(s.Said))
+                	}else{  
+                        	fmt.Println("Couldn't match a public key to an identity. Sorry...")
+                	}       
+                }
+                
+        }       
+
+
+}
+
 
 
 func Run(debug bool) {
@@ -119,6 +186,14 @@ func Run(debug bool) {
                         Help(debug)
                 }       
 
+                if strings.Compare("find", words[0]) == 0 {
+                        if len(words)>1{
+                                Find( words[1], debug)
+                        }else{
+                                fmt.Println("   Need a name to look for")
+                        }
+                }
+
                 if strings.Compare("show", words[0]) == 0 {
 			if len(words)>1{
                         	Show( words[1], debug)
@@ -127,6 +202,13 @@ func Run(debug bool) {
 			}
                 }       
 
+                if strings.Compare("new", words[0]) == 0 {
+                        if len(words)>2{
+                                New( words[1], words[2], debug)
+                        }else{
+                                fmt.Println("   Need 'band' and a band name")
+                        }
+                }
                 if strings.Compare("who", words[0]) == 0 {
                         Who(debug)
                 }       
