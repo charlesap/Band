@@ -67,11 +67,41 @@ func Setup() {
 
 func Help(debug bool) {
 	fmt.Println("Bandit Shell Commands:")
-        fmt.Println("   exit            - Exit the bandit shell.")
-        fmt.Println("   list ident|stmt - print out identities or statements.")
-        fmt.Println("   show            - print out user identity and statements.")
+        fmt.Println("   exit             - Exit the bandit shell.")
+        fmt.Println("   who              - print out identities.")
+        fmt.Println("   show me|identity - print out an identity.")
 
 }
+
+func Who(debug bool) {
+	
+        for _,c := range inband.Idents {
+		s,x := inband.Stmts[c.St]
+		if x {
+			fmt.Println(string(s.Said))
+		}else{
+			fmt.Println("Couldn't match a name to an identity. Sorry...")
+		}
+        }
+
+}
+
+func Show(s string, debug bool) {
+	var id inband.Shah
+	if s == "me" {
+		id = inband.Yo
+	}else{
+	}
+        c,x := inband.Idents[id]
+	if x {
+		fmt.Println(c)
+	}else{
+		fmt.Println(s,"not found.")
+	}
+        
+
+}
+
 
 func Run(debug bool) {
 	
@@ -89,12 +119,16 @@ func Run(debug bool) {
                         Help(debug)
                 }       
 
-                if strings.Compare("list", words[0]) == 0 {
-                        Help(debug)
+                if strings.Compare("show", words[0]) == 0 {
+			if len(words)>1{
+                        	Show( words[1], debug)
+			}else{
+				fmt.Println("   Need 'me' or an identity string")
+			}
                 }       
 
-                if strings.Compare("show", words[0]) == 0 {
-                        Help(debug)
+                if strings.Compare("who", words[0]) == 0 {
+                        Who(debug)
                 }       
 
 		if strings.Compare("exit", words[0]) == 0 {
