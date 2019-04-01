@@ -29,27 +29,18 @@
 package inband
 
 import (
-	"crypto"
-	"crypto/rand"
-	"crypto/rsa"
 	"crypto/sha256"
-	"crypto/x509"
 	"golang.org/x/crypto/ed25519"
 	"golang.org/x/crypto/ssh"
-	//"encoding/hex"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/pem"
 	"errors"
 	"fmt"
-	//	"flag"
-	"github.com/io-core/Attest/s2r"
 	"io/ioutil"
 	"os"
-	//	"path/filepath"
 	"strconv"
 	"strings"
-	//"time"
 )
 
 // DESIGN
@@ -103,7 +94,7 @@ import (
 // <DUTY>:    claimaint says individual 'SPEAKER'|'LEADER'|'SCAPEGOAT'|'COOK'|'CLERK'|'PROGNOSTICATOR'|'<whatever>' for band
 // <STATUS>:  claimaint says individual 'SAGE'|'CONTRIBUTOR'|'JOURNEYMAN'|'BRO/SIS'|'ELDER'|'FULL-MEMBER'|'ELECT'|'COMPETENT'|'DUES-PAID'|'<something>' in band
 // MY,<ROLE>: claimaint says individual 'MY' 'FRIEND'|'PARTNER'|'MENTOR'
-// NAME:      claimaint says claimant 'NAME' '<name>'
+// NAME:      claimaint says claimant 'NAME' '<name>'   ... may be many, a.k.a
 // EMAIL:     claimaint says claimant 'EMAIL' '<email address>'
 // IP:        claimaint says claimant 'IP' '<ip address>'
 // NICNAME:   claimaint says individual 'NAME' '<name>'
@@ -154,9 +145,9 @@ var Me Shah // of Stmt of identity
 var Yo Shah // of Claim of name by identity
 var Nm Shah // of Stmt of name
 
-var MyPrivateKeyType string
+
 var MyPrivateCert []byte
-var MyPrivateRSAKey *rsa.PrivateKey
+
 var MyPrivateEDKey *ed25519.PrivateKey
 
 var Stmts map[Shah]Stmt
@@ -186,29 +177,9 @@ func (i Stmt) Is() string {
 	return "somebody"
 }
 
-func getKeys(typ, pkfn string) (rsakey *rsa.PrivateKey, edkey *ed25519.PrivateKey, pkb, bkb []byte, err error) {
+func getKeys(pkfn string) (edkey *ed25519.PrivateKey, pkb, bkb []byte, err error) {
 	var bkt []byte
-	if typ == "rsa" {
-		if pkb, err = ioutil.ReadFile(pkfn + "/id_rsa"); err == nil {
-			if bkt, err = ioutil.ReadFile(pkfn + "/id_rsa.pub"); err == nil {
-
-				bka := strings.Split(string(bkt), " ")
-				l := len(bka)
-				if l < 3 {
-					err = errors.New("too few fields in public key file")
-				} else {
-					if l > 3 { // count from end because options may contain quoted spaces
-						bkb = []byte(bka[l-2] + " " + bka[l-3] + " Id")
-					} else {
-						bkb = []byte(bka[0] + " " + bka[1] + " Id")
-					}
-				}
-				privPem, _ := pem.Decode(pkb)
-				privPemBytes := privPem.Bytes
-				rsakey, err = x509.ParsePKCS1PrivateKey(privPemBytes)
-			}
-		}
-	} else if typ == "ed25519" {
+	
 		if pkb, err = ioutil.ReadFile(pkfn + "/id_ed25519"); err == nil {
 			if bkt, err = ioutil.ReadFile(pkfn + "/id_ed25519.pub"); err == nil {
 
@@ -229,16 +200,10 @@ func getKeys(typ, pkfn string) (rsakey *rsa.PrivateKey, edkey *ed25519.PrivateKe
 				edkey = &ek
 			}
 		}
-	} else if typ == "ssb" {
-		err = errors.New("ssb not implemented yet.")
-	} else {
-		err = errors.New("Don't know how to load " + typ + " keys on init.")
-	}
-
-	return rsakey, edkey, pkb, bkb, err
+	return edkey, pkb, bkb, err
 }
 
-func MakeClaim(affirm bool, count uint64, by, er, ee, st Shah) (c *Claim, err error) {
+func MakeClaim(affirm bool, count uint64, by, er, ee, st Shah, key *ed25519.PrivateKey) (c *Claim, err error) {
 	var sig []byte
 	var a byte
 
@@ -251,12 +216,15 @@ func MakeClaim(affirm bool, count uint64, by, er, ee, st Shah) (c *Claim, err er
 	cbuf := make([]byte, 8)
 	binary.LittleEndian.PutUint64(cbuf, count)
 
-	if sig, err = Sign(append([]byte{1, 0, 0, 0, 0, 0, 0, a},
+	pbk:=Stmts[er].Said
+
+
+	if sig, err = SignAs(append([]byte{1, 0, 0, 0, 0, 0, 0, a},
 		append(cbuf,
 			append(by[:],
 				append(er[:],
 					append(ee[:],
-						st[:]...)...)...)...)...)); err == nil {
+						st[:]...)...)...)...)...),key,pbk); err == nil {
 
 		c = &Claim{affirm, count, by, er, ee, st, sig, sha256.Sum256(sig)}
 	}
@@ -325,26 +293,26 @@ func NewBand( n string ) (err error) {
 		//fmt.Println("new public key:",base64.StdEncoding.EncodeToString(pubk))
 		s,_:=ssh.NewPublicKey(pubk)
 		spk:=ssh.MarshalAuthorizedKey(s)
-		
+		p := ed25519.PrivateKey(privk)
         	it := sha256.Sum256(spk)
         	Stmts[it] = Stmt{spk, sha256.Sum256(spk)}
 
                 nm := sha256.Sum256([]byte(n))
                 Stmts[nm] = Stmt{[]byte(n), nm}
 
-                bnc, err = MakeClaim(true, 18446744073709551615, it, it, it, nm)
+                bnc, err = MakeClaim(true, 18446744073709551615, it, it, it, nm, &p)
 
 		if 1==2 {fmt.Println(privk,bnc)}
 	}
 	return err
 }
 
-func initFromKeys(typ, pfn, mfn, n string) (err error) {
+func initFromKeys( pfn, mfn, n string) (err error) {
 	var bkb []byte
 	var mnc *Claim
 
-	MyPrivateKeyType = typ
-	if MyPrivateRSAKey, MyPrivateEDKey, MyPrivateCert, bkb, err = getKeys(typ, pfn); err == nil {
+	// MyPrivateKeyType = typ
+	if MyPrivateEDKey, MyPrivateCert, bkb, err = getKeys(pfn); err == nil {
 
 		Me = sha256.Sum256(bkb)
 		Stmts[Me] = Stmt{bkb, sha256.Sum256(bkb)}
@@ -352,7 +320,7 @@ func initFromKeys(typ, pfn, mfn, n string) (err error) {
 
 		Stmts[Nm] = Stmt{[]byte(n), Nm}
 
-		if mnc, err = MakeClaim(true, 0, Me, Me, Me, Nm); err == nil {
+		if mnc, err = MakeClaim(true, 0, Me, Me, Me, Nm, MyPrivateEDKey); err == nil {
 			Yo = mnc.Cl
 			Claims[Yo] = mnc
 			Idents[Yo] = mnc
@@ -372,19 +340,12 @@ func recallFromFile(mfn string) (err error) {
 		for _, e := range a {
 			l := strings.Split(e, ":\n")
 			if err == nil {
-				if l[0] == ":MYTYPE" {
-					MyPrivateKeyType = l[1]
-				} else if l[0] == "MYPRIVATE" {
+				if l[0] == ":MYPRIVATE" {
 					MyPrivateCert = []byte(l[1])
 					privPem, _ := pem.Decode(MyPrivateCert)
 					privPemBytes := privPem.Bytes
-					if MyPrivateKeyType == "rsa" {
-						MyPrivateRSAKey, err = x509.ParsePKCS1PrivateKey(privPemBytes)
-					} else if MyPrivateKeyType == "ed25519" {
-						ek := ed25519.PrivateKey(privPemBytes)
-						MyPrivateEDKey = &ek
-					}
-
+					ek := ed25519.PrivateKey(privPemBytes)
+					MyPrivateEDKey = &ek
 				} else if l[0] == "MYID" {
 					if x, err = base64.StdEncoding.DecodeString(l[1]); err == nil {
 						copy(Me[:], x)
@@ -478,7 +439,7 @@ func recallFromFile(mfn string) (err error) {
 
 }
 
-func recall(typ, pfn, mfn, n string, init, force bool) (err error) {
+func recall(pfn, mfn, n string, init, force bool) (err error) {
 
 	
 	//All = make(map[Shah]ICCC) // individual/band, By chain, Er chain, Ee chain for this Id
@@ -493,13 +454,13 @@ func recall(typ, pfn, mfn, n string, init, force bool) (err error) {
 			err = errors.New("The memory file does not exist and initialization was not requested.")
 		} else {
 			// initializing persistent store
-			err = initFromKeys(typ, pfn, mfn, n)
+			err = initFromKeys( pfn, mfn, n)
 		}
 	} else {
 		if init {
 			if force {
 				// re-initializing persistent store
-				err = initFromKeys(typ, pfn, mfn, n)
+				err = initFromKeys( pfn, mfn, n)
 			} else {
 				err = errors.New("The memory file already exists and force was not requested.")
 			}
@@ -518,6 +479,8 @@ func recall(typ, pfn, mfn, n string, init, force bool) (err error) {
 		fmt.Println("           me:", base64.StdEncoding.EncodeToString(Me[:]))
 		fmt.Println("           yo:", base64.StdEncoding.EncodeToString(Yo[:]))
 		fmt.Println("           nm:", base64.StdEncoding.EncodeToString(Nm[:]))
+	}else{
+		fmt.Println("Error loading memory:",err)
 	}
 
 	return err
@@ -526,12 +489,6 @@ func recall(typ, pfn, mfn, n string, init, force bool) (err error) {
 func persist(mfn string) (err error) {
 	f, err := os.Create(mfn)
 	defer f.Close()
-	if err == nil {
-		_, err = f.WriteString(":MYTYPE:\n")
-	}
-	if err == nil {
-		_, err = f.WriteString(MyPrivateKeyType + "\n")
-	}
 	if err == nil {
 		_, err = f.WriteString(":MYPRIVATE:\n")
 	}
@@ -584,13 +541,13 @@ func persist(mfn string) (err error) {
 	return err
 }
 
-func Startup(typ, pfn, mfn, n string, init, force, debug bool) (err error) {
+func Startup( pfn, mfn, n string, init, force, debug bool) (err error) {
 	if debug {
 		fmt.Println("loading keys identities and claims...")
 		//fmt.Println(typ, pfn, mfn, n, Me, Bands, All, Stmts, Claims)
 	}
 
-	if err = recall(typ, pfn, mfn, n, init, force); err != nil {
+	if err = recall( pfn, mfn, n, init, force); err != nil {
 
 		if debug {
 			fmt.Println("loaded!")
@@ -600,7 +557,7 @@ func Startup(typ, pfn, mfn, n string, init, force, debug bool) (err error) {
 	return err
 }
 
-func Shutdown(typ, pfn, mfn string, debug bool) (err error) {
+func Shutdown(pfn, mfn string, debug bool) (err error) {
 	if debug {
 		fmt.Println("storing identities and claims...")
 
@@ -615,47 +572,30 @@ func Shutdown(typ, pfn, mfn string, debug bool) (err error) {
 	return err
 }
 
-func Sign(contents []byte) (encoded []byte, err error) {
-	hashed := sha256.Sum256(contents)
 
-	signature := []byte{}
-	if MyPrivateKeyType == "rsa" {
-		if signature, err = rsa.SignPKCS1v15(rand.Reader, MyPrivateRSAKey, crypto.SHA256, hashed[:]); err == nil {
-			encoded = signature
-		}
-	} else {
-		pvk := make([]byte, 64)
-		pvka := strings.Split(string(*MyPrivateEDKey), "ed25519")
-		copy(pvk[0:64], pvka[2][40:104])
-		encoded = ed25519.Sign(pvk, hashed[:])
-	}
-	//fmt.Println("checking signature:",Verify(contents,encoded,string(Self.Said)))
+func Sign(contents []byte) ([]byte, error) {
+        return SignAs( contents, MyPrivateEDKey,Stmts[Me].Said)
+}
+
+func SignAs(contents []byte, edkey *ed25519.PrivateKey, pbkey []byte) (encoded []byte, err error) {
+	hashed := sha256.Sum256(contents)
+	
+	pvk := make([]byte, 64)
+	pvka := strings.Split(string(*edkey), "ed25519")
+	copy(pvk[0:64], pvka[2][40:104])
+	encoded = ed25519.Sign(pvk, hashed[:])
+	
+	//fmt.Println("checking signature:",Verify(contents,encoded,string(pbkey)))
 	return encoded, err
 }
 
 func Verify(contents []byte, encoded []byte, pubkey string) (err error) {
 
-	var block *pem.Block
-	var o []byte
 	var verifyer ssh.PublicKey
 
 	hashed := sha256.Sum256(contents)
 	pka := strings.Split(pubkey, " ")
-	//fmt.Println("Verifying with",pka[0])
-	if pka[0] == "ssh-rsa" {
-		pubKeyString := s2r.Translate(string(pubkey))
-		if block, o = pem.Decode([]byte(pubKeyString)); o == nil {
-			err = errors.New("failed to parse PEM block containing the public key")
-		} else {
-			rpk, err2 := x509.ParsePKIXPublicKey(block.Bytes)
-			if err2 != nil {
-				err = err2
-			} else {
-				err = rsa.VerifyPKCS1v15(rpk.(*rsa.PublicKey), crypto.SHA256, hashed[:], encoded)
-			}
-
-		}
-	} else if pka[0] == "ssh-ed25519" {
+	if pka[0] == "ssh-ed25519" {
 		if verifyer, _, _, _, err = ssh.ParseAuthorizedKey([]byte(pubkey)); err == nil {
 			vfb := verifyer.Marshal()
 			if !ed25519.Verify(vfb[len(vfb)-32:], hashed[:], encoded) {
