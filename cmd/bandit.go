@@ -43,7 +43,7 @@ func main() {
 	iPtr := flag.Bool("init", false, "Initialize the history")
 	fPtr := flag.Bool("force", false, "Force initialization (re-initialize) the history")
 
-	tkeyPtr := flag.String("t", "rsa", "type of initialization key pair to look for, e.g. 'rsa' or 'ed25519' or 'ssb'")
+	
 	pkeyPtr := flag.String("p", os.Getenv("HOME")+"/.ssh/", "path to initialization key files")
 
 	bandPtr := flag.String("h", os.Getenv("HOME")+"/.ssh/band_memory", "path to band_memory file")
@@ -54,10 +54,10 @@ func main() {
 		os.Exit(0)
 	}
 	Setup()
-	err := inband.Startup(*tkeyPtr, *pkeyPtr, *bandPtr, *namePtr, *iPtr, *fPtr, *dPtr)
+	err := inband.Startup( *pkeyPtr, *bandPtr, *namePtr, *iPtr, *fPtr, *dPtr)
 	if err == nil {
 		Run(*dPtr)
-		err = inband.Shutdown(*tkeyPtr, *pkeyPtr, *bandPtr, *dPtr)
+		err = inband.Shutdown( *pkeyPtr, *bandPtr, *dPtr)
 	}
 	if err != nil {
 		fmt.Println(err)
@@ -81,9 +81,9 @@ func Help(debug bool) {
 }
 
 func Who(debug bool) {
-	
+	fmt.Println("Number of idents:",len(inband.Idents))
         for id,c := range inband.Idents {
-		s,x := inband.Stmts[c.St]
+		s,x := inband.Stmts[c.StP.Sd]
 		if x {
 			fmt.Println(string(s.Said))
                         fmt.Println(base64.StdEncoding.EncodeToString(id[:]))
@@ -95,20 +95,60 @@ func Who(debug bool) {
 
 }
 
+func Why(debug bool) {
+        fmt.Println("Number of Names:",len(inband.Names))
+        for id,c := range inband.Names {
+                s,x := inband.Stmts[c.StP.Sd]
+                if x {
+                        fmt.Println(string(s.Said))
+                        fmt.Println(base64.StdEncoding.EncodeToString(id[:]))
+         
+                }else{
+                        fmt.Println("Couldn't match a name to an identity. Sorry...")
+                }
+        }
+
+}
+
+
+
 func What(debug bool) {
-        
+        fmt.Println("Number of bands:",len(inband.Bands))        
         for id,b := range inband.Bands {
-                s,x := inband.Stmts[b.St]
+                s,x := inband.Stmts[b.EeP.Sd]
                 if x { 
                         fmt.Println(string(s.Said))
                         fmt.Println(base64.StdEncoding.EncodeToString(id[:]))
                         
                 }else{  
-                        fmt.Println("Couldn't match a name to an identity. Sorry...")
+                        fmt.Println("Couldn't match a name to an band. Sorry...")
                 }       
         }       
         
 }
+
+func How(debug bool) {
+        fmt.Println("Founders of bands, names:",len(inband.Founds),len(inband.Names))
+        for id,b := range inband.Founds {
+                c,x := inband.Idents[b.ErP.Sd]
+                if x {
+                  t,y := inband.Names[c.StP.Sd]
+                  if y {
+
+                        fmt.Println(string(t.StP.Said))
+                        fmt.Println(base64.StdEncoding.EncodeToString(id[:]))
+		  }else{
+                        fmt.Println("1:Couldn't match a name to a founder. Sorry...")
+		  }
+                }else{
+                        fmt.Println("2:Couldn't match a claim to a founder. Sorry...")
+                }
+	    
+        }
+
+}
+
+
 
 func New(g,n string, debug bool) {
 	inband.NewBand(n)
@@ -117,19 +157,19 @@ func New(g,n string, debug bool) {
 func Show(s string, debug bool) {
 	var id inband.Shah
 	if s == "me" {
-		id = inband.Yo
+		id = inband.NmP.Sd
 	}else{
 	}
         c,x := inband.Idents[id]
 	if x {
-                s,x := inband.Stmts[c.St]
+                s,x := inband.Stmts[c.StP.Sd]
                 if x {
                         fmt.Println(string(s.Said))
                         fmt.Println(base64.StdEncoding.EncodeToString(id[:]))
                 }else{
                         fmt.Println("Couldn't match a name to an identity. Sorry...")
                 }
-                s,x = inband.Stmts[c.By]
+                s,x = inband.Stmts[c.ByP.Sd]
                 if x {
                         fmt.Println(string(s.Said))
                 }else{
@@ -147,7 +187,7 @@ func Show(s string, debug bool) {
 func Find(f string, debug bool) {
         for id, c := range inband.Idents { 
 		n:=""
-                s,x := inband.Stmts[c.St]
+                s,x := inband.Stmts[c.StP.Sd]
                 if x { 
                         n=string(s.Said)
 		}
@@ -155,7 +195,7 @@ func Find(f string, debug bool) {
                         fmt.Println(string(s.Said))
                         fmt.Println(base64.StdEncoding.EncodeToString(id[:]))
 
-                	s,x = inband.Stmts[c.By]
+                	s,x = inband.Stmts[c.ByP.Sd]
                 	if x {
                 	        fmt.Println(string(s.Said))
                 	}else{  
@@ -212,6 +252,18 @@ func Run(debug bool) {
                 if strings.Compare("who", words[0]) == 0 {
                         Who(debug)
                 }       
+
+                if strings.Compare("what", words[0]) == 0 {
+                        What(debug)
+                }
+
+                if strings.Compare("how", words[0]) == 0 {
+                        How(debug)
+                }
+
+                if strings.Compare("why", words[0]) == 0 {
+                        Why(debug)
+                }
 
 		if strings.Compare("exit", words[0]) == 0 {
 			fmt.Println("Goodbye.")
