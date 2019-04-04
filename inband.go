@@ -136,10 +136,11 @@ type Stmt struct {
 type Claim struct {
 	Affirm bool
 	C      uint64 // Increment for superceding claims
-	ByP    *Stmt
-	ErP    *Stmt
-	EeP    *Stmt
-	StP    *Stmt
+	Fld    [4]*Stmt
+//	ByP    *Stmt
+//	ErP    *Stmt
+//	EeP    *Stmt
+//	StP    *Stmt
 	Sig    []byte
 	Cl     Shah // Represents this claim
 }
@@ -244,7 +245,7 @@ func MakeClaim(affirm bool, count uint64, pby, per, pee, pst *Stmt, key *ed25519
 					append(Ee[:],
 						St[:]...)...)...)...)...), key, Stmts[Er].Said); err == nil {
 
-		c = &Claim{affirm, count, pby, per, pee, pst, sig, sha256.Sum256(sig)}
+		c = &Claim{affirm, count, [4]*Stmt{pby, per, pee, pst}, sig, sha256.Sum256(sig)}
 	}
 
 	return c, err
@@ -252,15 +253,15 @@ func MakeClaim(affirm bool, count uint64, pby, per, pee, pst *Stmt, key *ed25519
 
 func Untampered(c *Claim) (ok bool) {
 
-	s, e := Stmts[c.ByP.Sd]
+	s, e := Stmts[c.Fld[0].Sd]
 	if !e {
 		ok = false
 	} else {
 
-		By := Stmts[c.ByP.Sd].Sd
-		Er := Stmts[c.ErP.Sd].Sd
-		Ee := Stmts[c.EeP.Sd].Sd
-		St := Stmts[c.StP.Sd].Sd
+		By := Stmts[c.Fld[0].Sd].Sd
+		Er := Stmts[c.Fld[1].Sd].Sd
+		Ee := Stmts[c.Fld[2].Sd].Sd
+		St := Stmts[c.Fld[3].Sd].Sd
 
 		var a byte = 0
 		if !c.Affirm {
@@ -288,10 +289,10 @@ func claim2string(h string, c *Claim) string {
 	return fmt.Sprintf(h+"\n") +
 		fmt.Sprintf("%t\n", c.Affirm) +
 		fmt.Sprintf("%d\n", c.C) +
-		base64.StdEncoding.EncodeToString(c.ByP.Sd[:]) + "\n" +
-		base64.StdEncoding.EncodeToString(c.ErP.Sd[:]) + "\n" +
-		base64.StdEncoding.EncodeToString(c.EeP.Sd[:]) + "\n" +
-		base64.StdEncoding.EncodeToString(c.StP.Sd[:]) + "\n" +
+		base64.StdEncoding.EncodeToString(c.Fld[0].Sd[:]) + "\n" +
+		base64.StdEncoding.EncodeToString(c.Fld[1].Sd[:]) + "\n" +
+		base64.StdEncoding.EncodeToString(c.Fld[2].Sd[:]) + "\n" +
+		base64.StdEncoding.EncodeToString(c.Fld[3].Sd[:]) + "\n" +
 		base64.StdEncoding.EncodeToString(c.Sig) + "\n" +
 		base64.StdEncoding.EncodeToString(c.Cl[:]) + "\n"
 }
@@ -413,19 +414,19 @@ func recallFromFile(mfn string) (err error) {
 						}
 						if x, err = base64.StdEncoding.DecodeString(ll[2]); err == nil {
 							copy(y[:], x)
-							c.ByP = Stmts[y]
+							c.Fld[0] = Stmts[y]
 						}
 						if x, err = base64.StdEncoding.DecodeString(ll[3]); err == nil {
 							copy(y[:], x)
-							c.ErP = Stmts[y]
+							c.Fld[1] = Stmts[y]
 						}
 						if x, err = base64.StdEncoding.DecodeString(ll[4]); err == nil {
 							copy(y[:], x)
-							c.EeP = Stmts[y]
+							c.Fld[2] = Stmts[y]
 						}
 						if x, err = base64.StdEncoding.DecodeString(ll[5]); err == nil {
 							copy(y[:], x)
-							c.StP = Stmts[y]
+							c.Fld[3] = Stmts[y]
 						}
 						if txt, err = base64.StdEncoding.DecodeString(ll[6]); err == nil {
 							c.Sig = txt
@@ -435,17 +436,17 @@ func recallFromFile(mfn string) (err error) {
 						}
 						if Untampered(c) {
 							Claims[c.Cl] = c
-							if (c.ByP == c.ErP) && (c.ErP == c.EeP) {
+							if (c.Fld[0] == c.Fld[1]) && (c.Fld[0] == c.Fld[2]) {
 								Idents[c.Cl] = c
 							}
-							q, got := Names[c.StP.Sd]
+							q, got := Names[c.Fld[3].Sd]
 							if (!got) || (q.C > c.C) {
-								Names[c.StP.Sd] = c
+								Names[c.Fld[3].Sd] = c
 							}
-							if (c.ByP == c.ErP) && (c.ByP != c.EeP) && (c.ByP == c.StP) {
+							if (c.Fld[0] == c.Fld[1]) && (c.Fld[0] != c.Fld[2]) && (c.Fld[0] == c.Fld[3]) {
 								Bands[c.Cl] = c
 							}
-							if (c.ByP != c.ErP) && (c.ByP == c.EeP) && (c.ByP == c.StP) {
+							if (c.Fld[0] != c.Fld[1]) && (c.Fld[0] == c.Fld[2]) && (c.Fld[0] == c.Fld[3]) {
 								Founds[c.Cl] = c
 							}
 
