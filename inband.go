@@ -137,10 +137,6 @@ type Claim struct {
 	Affirm bool
 	C      uint64 // Increment for superceding claims
 	Fld    [4]*Stmt
-//	ByP    *Stmt
-//	ErP    *Stmt
-//	EeP    *Stmt
-//	StP    *Stmt
 	Sig    []byte
 	Cl     Shah // Represents this claim
 }
@@ -164,7 +160,9 @@ var Founds map[Shah]*Claim
 func prepopulate() {
 	predef := []string{"name",
 		"band",
-		"found"}
+		"found",
+		"sponsor",
+		"disclaim"}
 
 	for _, v := range predef {
 		pd := sha256.Sum256([]byte(v))
@@ -224,14 +222,14 @@ func getKeys(pkfn string) (edkey *ed25519.PrivateKey, pkb, bkb []byte, err error
 	return edkey, pkb, bkb, err
 }
 
-func MakeClaim(affirm bool, count uint64, pby, per, pee, pst *Stmt, key *ed25519.PrivateKey) (c *Claim, err error) {
+func MakeClaim(affirm bool, count uint64, a0p, a1p, a2p, a3p *Stmt, key *ed25519.PrivateKey) (c *Claim, err error) {
 	var sig []byte
 	var a byte = 0
 
-	By := Stmts[pby.Sd].Sd
-	Er := Stmts[per.Sd].Sd
-	Ee := Stmts[pee.Sd].Sd
-	St := Stmts[pst.Sd].Sd
+	A0 := Stmts[a0p.Sd].Sd
+	A1 := Stmts[a1p.Sd].Sd
+	A2 := Stmts[a2p.Sd].Sd
+	A3 := Stmts[a3p.Sd].Sd
 
 	if !affirm {
 		a = 255
@@ -240,12 +238,12 @@ func MakeClaim(affirm bool, count uint64, pby, per, pee, pst *Stmt, key *ed25519
 	binary.LittleEndian.PutUint64(cbuf, count)
 	if sig, err = SignAs(append([]byte{1, 0, 0, 0, 0, 0, 0, a},
 		append(cbuf,
-			append(By[:],
-				append(Er[:],
-					append(Ee[:],
-						St[:]...)...)...)...)...), key, Stmts[Er].Said); err == nil {
+			append(A0[:],
+				append(A1[:],
+					append(A2[:],
+						A3[:]...)...)...)...)...), key, Stmts[A1].Said); err == nil {
 
-		c = &Claim{affirm, count, [4]*Stmt{pby, per, pee, pst}, sig, sha256.Sum256(sig)}
+		c = &Claim{affirm, count, [4]*Stmt{a0p, a1p, a2p, a3p}, sig, sha256.Sum256(sig)}
 	}
 
 	return c, err
@@ -258,10 +256,10 @@ func Untampered(c *Claim) (ok bool) {
 		ok = false
 	} else {
 
-		By := Stmts[c.Fld[0].Sd].Sd
-		Er := Stmts[c.Fld[1].Sd].Sd
-		Ee := Stmts[c.Fld[2].Sd].Sd
-		St := Stmts[c.Fld[3].Sd].Sd
+		A0 := Stmts[c.Fld[0].Sd].Sd
+		A1 := Stmts[c.Fld[1].Sd].Sd
+		A2 := Stmts[c.Fld[2].Sd].Sd
+		A3 := Stmts[c.Fld[3].Sd].Sd
 
 		var a byte = 0
 		if !c.Affirm {
@@ -273,10 +271,10 @@ func Untampered(c *Claim) (ok bool) {
 
 		q := append([]byte{1, 0, 0, 0, 0, 0, 0, a},
 			append(cbuf,
-				append(By[:],
-					append(Er[:],
-						append(Ee[:],
-							St[:]...)...)...)...)...)
+				append(A0[:],
+					append(A1[:],
+						append(A2[:],
+							A3[:]...)...)...)...)...)
 
 		if err := Verify(q, c.Sig, string(s.Said)); err == nil {
 			ok = true

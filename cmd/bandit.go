@@ -35,6 +35,7 @@ import (
 	"strings"
 	"encoding/base64"
 	"github.com/charlesap/Inband"
+	"github.com/mndrix/golog"
 )
 
 func main() {
@@ -209,6 +210,74 @@ func Find(f string, debug bool) {
 }
 
 
+const rules = `
+
+ * i / i "name"  t    -> names i t.
+ * i / i "follow" j   -> follows i j.
+ * i / i "block" j    -> blocks i j.
+ * i / i "friend" j   -> friends i j.
+ ^ b / b "band"  t    -> bands b t.
+ ^ b / i "found" b    -> founder b i.
+ > i / j "accept" b   -> accepting b i j. 
+ > i / j "reject" b   -> rejecting b i j.
+ > i / b "shun" j     -> shunning b i j.
+ > i / b "defend" j   -> defending b i j.
+ > i / j t b          -> claiming b i t j. 
+ > i / i "assoc" b    -> associating i b.
+ > i / i "aka" j      -> aka i j.
+ > i / j "nic" k      -> nicnames i j k.
+ > i / i "insist" t   ~
+ > i / i "deny" t     ~
+ * i / i "email" t    -> emails i t.
+ * i / b "bmail" t    -> bmails i t b.
+ * i / i "phone" t    -> phones i t.
+ * i / i "address" t  -> addresses i t.
+ * i / i "geohash" t  -> geohashes i t.
+
+
+foaf I J = friends I X & friends X J.
+
+connected I J = friends I J 
+              | friends I X & connected X J.
+
+member B I = founder B I 
+	   | associating I B & count(accepting B _ I) > count(rejecting B _ I).
+
+shunned B I = count(shunning B _ I) > count(defending B _ I).
+
+speaker B I = member B I & max(claiming B _ "speaker" I,I)
+
+member "Bob" "Thunder Cats"?
+speaker "Nancy" "House"?
+
+
+`
+
+func Interp(debug bool){
+
+	m := golog.NewMachine().Consult(`
+
+    father(john).
+    father(jacob).
+
+    mother(sue).
+
+    parent(X) :-
+        father(X).
+    parent(X) :-
+        mother(X).
+
+	`)
+	if m.CanProve(`father(john).`) {
+	    fmt.Printf("john is a father\n")
+	}
+
+	solutions := m.ProveAll(`parent(X).`)
+	for _, solution := range solutions {
+	    fmt.Printf("%s is a parent\n", solution.ByName_("X"))
+	}
+
+}
 
 func Run(debug bool) {
 	
