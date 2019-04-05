@@ -46,6 +46,8 @@ import (
 
 // DESIGN
 
+// "Everybody Knows" A Decentralized Architecture for Group Activity
+
 // Tribes have a memory while states have a history
 // Tribes have a way while states have a code
 // Sub-groups of the tribe delegate one of their own to the chief for service while kings designate officials to govern subjects.
